@@ -1,0 +1,90 @@
+{
+    "name": "xnatpet-command",
+    "description": "orchestrate staging PET session from XNAT servers",
+    "type": "docker",
+    "info-url": "https://github.com/jjleewustledu/xnatpet.git", 
+    "version": "1.0",
+    "schema-version": "1.0",
+    "image": "xnat/xnatpet-command-image:1.0",
+    "index": "https://index.docker.io/v1/", 
+    "command-line": "orchestrate.py scans $XNAT_HOST $XNAT_USER $XNAT_PASS #SESSION_ID# #PROJECT#",
+    "reserve-memory", "100", // adjust MB
+    "limit-memory", "1000",  // adjust MB
+    "limit-cpu", "1.5", 
+    "override-entrypoint": true,
+    "working-directory": "/work",
+    "mounts": [
+	{
+	    "name": "SubjectsStash",
+	    "writable": true, 
+	    "path": "/work/SubjectsStash"
+	}
+    ],
+    "environment-variables" : {
+	"PATH": "/opt/conda/bin:$PATH",
+	"HOME": "/work",
+	"SHELL": "/bin/bash"
+    },
+    "ports" : {
+	"7745": "7745"
+    },
+    "inputs": [
+        {
+            "name": "PROJECT",
+            "user-settable": false,
+            "required": true
+        },
+	{
+	    "name": "SESSION_ID"
+	    "user-settable": false,
+	    "required": true
+	}
+    ],
+    "outputs": [
+	{
+	    "name": "ASSESSOR",
+	    "description": "staging information for PET session",
+	    "required": true,
+	    "mount": "SubjectsStash"
+	}],
+    "xnat": [
+        {
+            "name": "xnatpet-session-batch",
+            "label": "xnatpet batch",
+            "description": "orchestrate staging PET data for all scans in session on mount SubjectsStash",
+            "contexts": [
+                "xnat:imageSessionData"
+            ],
+            "external-inputs": [
+                {
+                    "name": "session",
+                    "description": "input session",
+                    "type": "Session",
+                    "required": true,
+                    "load-children": false
+                }
+            ],
+            "derived-inputs": [
+                {
+                    "name": "project",
+                    "type": "string",
+                    "derived-from-wrapper-input": "session",
+                    "derived-from-xnat-object-property": "project-id",
+                    "provides-value-for-command-input": "PROJECT",
+                    "user-settable": false,
+                    "required": true
+                },
+                {
+                    "name": "session-id",
+                    "type": "string",
+                    "derived-from-wrapper-input": "session",
+                    "derived-from-xnat-object-property": "id",
+                    "provides-value-for-command-input": "SESSION_ID",
+                    "user-settable": false,
+                    "required": true
+                }
+            ],
+            "output-handlers": []
+        }
+    ]
+}

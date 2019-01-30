@@ -1,0 +1,58 @@
+{
+    "name": "xnatpet-command",
+    "description": "orchestrate staging PET data from XNAT servers",
+    "type": "docker",
+    "version": "1.0",
+    "schema-version": "1.0",
+    "image": "xnat/xnatpet-command:1.0",
+    "command-line": "orchestrate.py $XNAT_HOST $XNAT_USER $XNAT_PASS #PROJECT#",
+    "override-entrypoint": true,
+    "working-directory": "/work",
+    "mounts": [
+	{
+	}
+    ],
+    "environment-variables" : {},
+    "ports" : {
+	"7745": "7745"
+    },
+    "inputs": [
+        {
+            "name": "PROJECT",
+            "user-settable": false,
+            "required": true
+        }
+    ],
+    "outputs": [],
+    "xnat": [
+        {
+            "name": "dcm2niix-subjects-batch-project",
+            "label": "dcm2niix batch",
+            "description": "Launch dcm2niix-sessions-batch-subject on all subjects in a project",
+            "contexts": [
+                "xnat:projectData"
+            ],
+            "external-inputs": [
+                {
+                    "name": "project",
+                    "description": "Input project",
+                    "type": "Project",
+                    "required": true,
+                    "load-children": false
+                }
+            ],
+            "derived-inputs": [
+                {
+                    "name": "project-id",
+                    "type": "string",
+                    "derived-from-wrapper-input": "project",
+                    "derived-from-xnat-object-property": "id",
+                    "provides-value-for-command-input": "PROJECT",
+                    "user-settable": false,
+                    "required": true
+                }
+            ],
+            "output-handlers": []
+        }
+    ]
+}
