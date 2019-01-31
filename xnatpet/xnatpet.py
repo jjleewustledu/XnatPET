@@ -22,13 +22,18 @@ class StageXnat(object):
         self.stage_rawdata(ses)
         return
 
-    # Fluorodeoxyglucose, Oxygen-water, Oxygen, Carbon monoxide
     def stage_rawdata(self, ses, tracer='Fluorodeoxyglucose'):
+        """
+        downloads session rawdata as .bf files
+        :param ses is a pyxnat session (a.k.a., experiment):
+        :param tracer in ['Fluorodeoxyglucose', 'Oxygen-water', 'Oxygen', 'Carbon']:
+        :return b := list of downloaded rawdata as .bf files:
+        """
         while self.on_schedule() and not self.__resources_available():
             self.__wait()
         d = self.stage_dicoms_rawdata(ses)
         if d:
-            self.stage_bfiles_rawdata(ses, d, tracer)
+            d = self.stage_bfiles_rawdata(ses, d, tracer) # .dcm -> .bf
         return d
 
     def stage_scan(self, scn):
@@ -43,25 +48,52 @@ class StageXnat(object):
         return d
 
     def stage_dicoms_rawdata(self, ses, the_files='*.dcm'):
-        d = ses.resources().files(the_files).get()
-        self.__download_rawdata(d)
-        return d
+        """
+        downloads DICOMs from the session resources tagged RawData
+        :param ses is a pyxnat session (a.k.a., experiment):
+        :param the_files is a string specifier for requests from ses:
+        :return ds is the list of downloaded DICOMs:
+        """
+        ds = ses.resources().files(the_files).get()
+        self.__download_rawdata(ds)
+        return ds
 
     def stage_bfiles_rawdata(self, ses, the_files='*.dcm', tracer='Fluorodeoxyglucose'):
-        d = ses.resources().files(the_files).get()
-        #d = self.__select_tracer(d, tracer)
-        b = self.__select_bfiles(d)
-        self.__download_rawdata(b)
-        return b
+        """
+        downloads .bf files from the session resources tagged RawData
+        :param ses is a pxnat session (a.k.a., experiment):
+        :param the_files is a string specifier for requests from sess or a list of specifiers or a list of files:
+        :param tracer:
+        :return bs is the list of downloaded .bf files:
+        """
+        if not the_files:
+            return False
+        ds = []
+        if isinstance(the_files, str):
+            ds = ses.resources().files(the_files).get() # expands specifier the_files
+        if isinstance(the_files, list):
+            for f in the_files:
+                ds.append(ses.resources().files(f).get()) # expands f as needed
+            ds = [item for sublist in ds for item in sublist] # flattens list of lists
+            # From Alex Martelli
+            # https://stackoverflow.com/questions/952914/how-to-make-a-flat-list-out-of-list-of-lists?page=1&tab=votes#tab-top
+
+        bs = self.__select_tracer(ds, tracer)
+        bs = self.__select_bfiles(bs)
+        self.__download_rawdata(bs)
+        return bs
 
 
 
     # UTILITIES #############################################################################
 
-    def dcm2bf(self, dcm):
-        from os import path
-        (root,ext) = path.splitext(path.basename(dcm))
-        return root + ".bf"
+    def dcm_seriesdate(self, dcm):
+        d = self.__get_dicom(dcm)
+        return d.SeriesDate # yyyymmdd
+
+    def dcm_seriestime(self, dcm):
+        d = self.__get_dicom(dcm)
+        return d.SeriesTime # hhmmss.ffffff after http://dicom.nema.org/medical/dicom/current/output/chtml/part05/sect_6.2.html
 
     def fetch_subjects(self, prj):
         if not prj:
@@ -78,13 +110,15 @@ class StageXnat(object):
             ses = self.session
         return ses.scans('*').get()
 
-    def dcm_seriesdate(self, dcm):
-        d = self.__get_dicom(dcm)
-        return d.SeriesDate # yyyymmdd
+    def filename2dcm(self, bf):
+        from os import path
+        (root,ext) = path.splitext(path.basename(bf))
+        return root + ".dcm"
 
-    def dcm_seriestime(self, dcm):
-        d = self.__get_dicom(dcm)
-        return d.SeriesTime # hhmmss.ffffff after http://dicom.nema.org/medical/dicom/current/output/chtml/part05/sect_6.2.html
+    def filename2bf(self, dcm):
+        from os import path
+        (root,ext) = path.splitext(path.basename(dcm))
+        return root + ".bf"
 
     def ifh_imageduration(self, dcm):
         lm_dict = self.__get_interfile(dcm)
@@ -98,7 +132,7 @@ class StageXnat(object):
         lm_dict = self.__get_interfile(dcm)
         return lm_dict['study time']['value'] # hh:mm:ss GMT+00:00
 
-    def ifh_tracer(self, dcm, trac):
+    def ifh_tracer(self, dcm):
         lm_dict = self.__get_interfile(dcm)
         return lm_dict['Radiopharmaceutical']['value']
 
@@ -109,7 +143,12 @@ class StageXnat(object):
         return self.__is_imagetype3(dcm, 'PET_LISTMODE')
 
     def is_tracer(self, dcm, tracer):
-        return self.ifh_tracer == tracer
+        import re
+        with open(dcm, 'r') as fid:
+            fcontent = fid.read()
+        p = re.compile('(?<=Radiopharmaceutical:)[A-Za-z\-]+')
+        m = re.search(p, fcontent)
+        return m.group(0) == tracer
 
     def is_umap(self, dcm):
         d = self.__get_dicom(dcm)
@@ -386,16 +425,16 @@ class StageXnat(object):
     def __resources_available(self):
         return True
 
-    def __select_bfiles(self, dcms):
+    def __select_bfiles(self, bfs):
         """
         examines rawdata dcms and selects bf for norm and listmode data
-        :param dcms:
+        :param bfs:
         :return bf:
         """
         bf = []
-        for d in dcms:
-            if self.is_norm(d) or self.is_listmode(d):
-                bf.append(self.dcm2bf(d))
+        for b in bfs:
+            if self.is_norm(self.filename2dcm(b)) or self.is_listmode(self.filename2dcm(b)):
+                bf.append(b)
         return bf
 
     def __select_tracer(self, dcms, tracer='Fluorodeoxyglucose'):
@@ -408,7 +447,7 @@ class StageXnat(object):
         bf = []
         for d in dcms:
             if self.is_tracer(d, tracer):
-                bf.append(self.dcm2bf(d))
+                bf.append(self.filename2bf(d))
         return bf
 
     def __symlink(self, name, path_dict):

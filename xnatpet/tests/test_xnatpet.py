@@ -41,8 +41,8 @@ class TestStageXnat(unittest.TestCase):
         print('\ntest_stage_rawdata\n')
         print(d)
 
-    def test_stage_rawdata_OO(self):
-        d = self.sxnat.stage_rawdata(self.sxnat.session, tracer='Oxygen')
+    def test_stage_rawdata_OC(self):
+        d = self.sxnat.stage_rawdata(self.sxnat.session, tracer='Carbon')
         print('\ntest_stage_rawdata\n')
         print(d)
 
