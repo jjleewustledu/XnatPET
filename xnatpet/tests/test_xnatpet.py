@@ -23,6 +23,24 @@ class TestStageXnat(unittest.TestCase):
         print('\ntest_subject\n')
         print(sbj) # .get() -> lengthy xml
 
+    def test_stage_session(self):
+        print('\ntest_stage_session\n')
+
+    def test_stage_scan(self):
+        d = self.sxnat.stage_scan(self.sxnat.session.scan('84'))
+        print('\ntest_stage_scan\n')
+        print(d)
+
+    def test_stage_umaps(self):
+        d = self.sxnat.stage_umaps(self.sxnat.session)
+        print('\ntest_stage_umaps\n')
+        print(d)
+
+    def test_stage_freesurfer(self):
+        d = self.sxnat.stage_freesurfer(self.sxnat.session)
+        print('\ntest_stage_freesurfer\n')
+        print(d)
+
     def test_session_resources(self):
         """after pyxnat/pyxnat/tests/resources_test.py"""
         res = self.sxnat.session.resources().files('1.3.12.2.1107.5.2.38.51010.30000018051716493155100000021.dcm')
@@ -65,6 +83,12 @@ class TestStageXnat(unittest.TestCase):
         d = self.sxnat.stage_bfiles_rawdata(self.sxnat.session, '1.3.12.2.1107.5.2.38.51010.30000018051716493155100000020.dcm')
         print('\ntest_stage_bfiles_rawdata\n')
         print(d)
+
+    def test_stage_umap(self):
+        self.sxnat.stage_umaps(self.sxnat.session)
+
+    def test___download(self):
+        self.sxnat.download()
 
 
 
@@ -122,7 +146,6 @@ class TestPyxnat(TestStageXnat):
         from pyxnat import select
         expanded = select.compute('/projects/CCIR_00754/subjects/HYGLY48//experiments')
         print(expanded)
-
 
 
 
