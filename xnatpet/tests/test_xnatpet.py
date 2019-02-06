@@ -23,12 +23,22 @@ class TestStageXnat(unittest.TestCase):
         print('\ntest_subject\n')
         print(sbj) # .get() -> lengthy xml
 
+    def test_stage_subject(self):
+        d = self.sxnat.stage_subject(self.sxnat.session)
+        print('\ntest_stage_session\n')
+
     def test_stage_session(self):
+        d = self.sxnat.stage_session(self.sxnat.session)
         print('\ntest_stage_session\n')
 
     def test_stage_scan(self):
         d = self.sxnat.stage_scan(self.sxnat.session.scan('84'))
         print('\ntest_stage_scan\n')
+        print(d)
+
+    def test_stage_ct(self):
+        d = self.sxnat.stage_ct(self.sxnat.subject)
+        print('\ntest_stage_ct\n')
         print(d)
 
     def test_stage_umaps(self):
@@ -64,6 +74,11 @@ class TestStageXnat(unittest.TestCase):
         print('\ntest_stage_rawdata\n')
         print(d)
 
+    def test_stage_rawdata_OO(self):
+        d = self.sxnat.stage_rawdata(self.sxnat.session, tracer='Oxygen')
+        print('\ntest_stage_rawdata\n')
+        print(d)
+
     def test_stage_dicoms_rawdata_listmode(self):
         d = self.sxnat.stage_dicoms_rawdata(self.sxnat.session, '1.3.12.2.1107.5.2.38.51010.30000018051716493155100000021.dcm')
         print('\ntest_stage_dicoms_rawdata\n')
@@ -83,9 +98,6 @@ class TestStageXnat(unittest.TestCase):
         d = self.sxnat.stage_bfiles_rawdata(self.sxnat.session, '1.3.12.2.1107.5.2.38.51010.30000018051716493155100000020.dcm')
         print('\ntest_stage_bfiles_rawdata\n')
         print(d)
-
-    def test_stage_umap(self):
-        self.sxnat.stage_umaps(self.sxnat.session)
 
     def test___download(self):
         self.sxnat.download()
