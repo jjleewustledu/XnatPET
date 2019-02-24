@@ -1,3 +1,5 @@
+import os
+import errno
 import pyxnat
 
 class StageXnat(object):
@@ -6,25 +8,96 @@ class StageXnat(object):
 
     __author__ = "John J. Lee"
     __copyright__ = "Copyright 2019"
+
+    project = None
+    subject = None
+    session = None
+    scan = None
     sleep_duration = 600 # secs
-    tracers = ['Fluorodeoxyglucose', 'Carbon', 'Oxygen', 'Oxygen-water']
+    tracers = ['Oxygen-water', 'Carbon', 'Oxygen'] # 'Fluorodeoxyglucose'
+
+    @property
+    def str_project(self):
+        return self.project.id()
+
+    @property
+    def str_subject(self):
+        return self.subject.id() # + '-' + self.subject.label()
+
+    @property
+    def str_session(self):
+        return str(self.session)[20:]
+
+    @property
+    def str_scan(self):
+        return self.scan.id()
+
+    @property
+    def dir_project(self):
+        return os.path.join(self.builddir, self.str_project)
+
+    @property
+    def dir_subject(self):
+        return os.path.join(self.dir_project, 'sub-'+self.str_subject[5:]) # + '-' + self.subject.label())
+
+    @property
+    def dir_session(self):
+        return os.path.join(self.dir_subject, 'ses-'+self.str_session[5:])
+
+    @property
+    def dir_SCANS(self):
+        return os.path.join(self.dir_session, 'SCANS')
+
+    @property
+    def dir_scan(self):
+        return os.path.join(self.dir_SCANS, self.str_scan)
+
+    @property
+    def dir_UMAPS(self):
+        return os.path.join(self.dir_session, 'UMAPS')
 
 
+
+    # PRIMITIVES #########################################################################
+
+    def projects(self, interface=None):
+        if not interface:
+            interface = self.xnat
+        return interface.projects('*')
+
+    def subjects(self, prj=None):
+        if not prj:
+            prj = self.project
+        return prj.subjects('*')
+
+    def sessions(self, sbj=None):
+        if not sbj:
+            sbj = self.subject
+        return sbj.experiments('*')
+
+    def scans(self, ses=None):
+        if not ses:
+            ses = self.session
+        return ses.scans('*')
+
+
+
+    # STAGING #########################################################################
 
     def stage_project(self):
-        for s in self.fetch_subjects():
+        for s in self.subjects():
             self.stage_subject(s)
         return
 
     def stage_subject(self, sbj):
-        for s in self.fetch_sessions(sbj):
+        for s in self.sessions(sbj):
             self.stage_session(s)
         return
 
     def stage_session(self, ses):
         while self.on_schedule() and not self.__resources_available():
             self.__wait()
-        for s in self.fetch_scans(ses):
+        for s in self.scans(ses):
             self.stage_scan(s)
         for t in self.tracers:
             self.stage_rawdata(ses, t)
@@ -34,19 +107,26 @@ class StageXnat(object):
         if not ses:
             ses = self.session
         if not sdir:
-            sdir = self.builddir
-        self.stage_dicoms(scn, ses=ses, ddir=sdir)
+            sdir = self.dir_SCANS
+        self.stage_dicoms_scan(scn, ses=ses, ddir=sdir)
         return
 
-    def stage_ct(self, sbj):
-        import os
-        for s in self.fetch_sessions(sbj):
-            if self.session_has_ct(s):
-                ctdir = os.path.join(self.builddir, 'ct')
+    def stage_ct(self, obj):
+
+        # recursion for Subjects
+        if isinstance(obj, pyxnat.core.resources.Subject):
+            for e in self.sessions(obj):
+                self.stage_ct(e)
+            return
+
+        # base case for Experiment
+        if isinstance(obj, pyxnat.core.resources.Experiment):
+            if self.session_has_ct(obj):
+                ctdir = os.path.join(self.dir_session, 'ct')
                 self.ensuredir(ctdir)
-                self.stage_scan(s.scans('2'), ses=s, sdir=ctdir)
+                self.stage_scan(obj.scans('2'), ses=obj, sdir=ctdir)
                 return
-        raise AssertionError("stage_ct could not find a ct sessions for %s" % sbj.get())
+        raise AssertionError("stage_ct could not find a ct sessions for %s" % str(obj))
 
     def stage_rawdata(self, ses, tracer='Fluorodeoxyglucose'):
         """
@@ -66,11 +146,11 @@ class StageXnat(object):
             dests.append(self.move_rawdata(self.filename2dcm(b), tracer)) # .dcm has information needed by move_rawdata
         return dests
 
-    def stage_dicoms(self, scn, ses=None, fs='*.dcm', ddir=None):
+    def stage_dicoms_scan(self, scn, ses=None, fs='*.dcm', ddir=None):
         if not ses:
             ses = self.session
         ds = scn.resources().files(fs).get()
-        self.__download_ct(ds, self.__get_dicomdict, sessid=ses._urn, scanid=scn.get()[0], fdir=ddir)
+        self.__download_ct(ds, self.__get_dicomdict, sessid=ses.id(), scanid=scn.id(), fdir=ddir)
         return ds
 
     def stage_dicoms_rawdata(self, ses, the_files='*.dcm'):
@@ -81,7 +161,7 @@ class StageXnat(object):
         :return ds is the list of downloaded DICOMs:
         """
         ds = ses.resources().files(the_files).get()
-        self.__download_files(ds, self.__get_rawdatadict, fdir=self.builddir)
+        self.__download_files(ds, self.__get_rawdatadict, fdir=self.dir_session)
         return ds
 
     def stage_bfiles_rawdata(self, ses, the_files='*.dcm', tracer='Fluorodeoxyglucose'):
@@ -106,16 +186,15 @@ class StageXnat(object):
 
         bs = self.__select_tracer(ds, tracer)
         bs = self.__select_bfiles(bs)
-        self.__download_files(bs, self.__get_rawdatadict, fdir=self.builddir)
+        self.__download_files(bs, self.__get_rawdatadict, fdir=self.dir_session)
         return bs
 
-    def stage_freesurfer(self, ses):
+    def stage_freesurfer(self):
         """
         downloads assessors labelled freesurfer from a session
-        :param ses:
         :return:
         """
-        self.__download_assessor()
+        self.__download_assessors()
         return
 
     def stage_umaps(self, ses, umap_desc=u'Head_MRAC_Brain_HiRes_in_UMAP'):
@@ -140,7 +219,7 @@ class StageXnat(object):
                 if umap_desc == dinfo.SeriesDescription:
                     self.__download_scan(self.__get_dicomdict, scanid=scansg[isc])
                     upaths.append(
-                        self.move_scan(scansg[isc], scaninfo=dinfo))
+                        self.move_scan(scansg[isc], self.dir_UMAPS, scaninfo=dinfo))
             except IOError as e:
                 warn(e.message)
             isc += 1
@@ -182,29 +261,14 @@ class StageXnat(object):
         return d.StudyTime # hhmmss.ffffff after http://dicom.nema.org/medical/dicom/current/output/chtml/part05/sect_6.2.html
 
     def ensuredir(self, d):
-        import os
         try:
             if not os.path.exists(d):
-                os.mkdir(d)
-        except IOError as e:
-            raise AssertionError(e.message)
+                os.makedirs(d)
+        except OSError as e:
+            if e.errno != errno.EEXIST:
+                raise
         else:
             return d
-
-    def fetch_subjects(self, prj=None):
-        if not prj:
-            prj = self.project
-        return prj.subjects('*')
-
-    def fetch_sessions(self, sbj=None):
-        if not sbj:
-            sbj = self.subject
-        return sbj.experiments('*')
-
-    def fetch_scans(self, ses=None):
-        if not ses:
-            ses = self.session
-        return ses.scans('*')
 
     def filename2dcm(self, bf):
         from os import path
@@ -251,7 +315,6 @@ class StageXnat(object):
         return d.SeriesDescription == u'Head_MRAC_Brain_HiRes_in_UMAP'
 
     def move_rawdata(self, b, tracer):
-        import os
         from os import path
         import shutil
         tdir = self.rawdata_dir(b, tracer)
@@ -260,17 +323,17 @@ class StageXnat(object):
         shutil.move(b, bdest)
         return bdest
 
-    def move_scan(self, spath0, scaninfo):
+    def move_scan(self, spath0, starg, scaninfo):
         """
         moves .dcm from a scan (:= scaninfo) to spath (:= scaninfo)
         :param spath0 is a path containing .dcm:
+        :param starg is a target path to contain a Series-Description folder:
         :param scaninfo := pydicom.dcmread():
         :return spath:
         """
-        import os
         from os import path
         import shutil
-        spath = path.join(self.builddir,
+        spath = path.join(starg,
                           str(scaninfo.SeriesDescription) + '_DT' +
                           str(scaninfo.SeriesDate) +
                           str(scaninfo.AcquisitionTime))
@@ -281,9 +344,8 @@ class StageXnat(object):
         return True
 
     def rawdata_dir(self, b, tracer):
-        import os
         tdir = os.path.join(
-            self.builddir,
+            self.dir_session,
             self.tracer_label(tracer, b) + '_' + self.visit_label(b) + '-Converted-NAC')
         return tdir
 
@@ -315,29 +377,29 @@ class StageXnat(object):
 
     # CLASS-PRIVATE #########################################################################
 
-    def __download_assessor(self):
+    def __download_assessors(self, variety='ALL', vtype='files'):
         """
         See also John Flavin's dcm2ni_wholeSession.py
-        :return filesystem with assessors unpacked to self.builddir && symlink to freesurfer mri path
+        :variety is the value for assessors in the XNAT REST API:
+        :vtype is the variety type:
+        :return filesystem with archive unpacked to self.dir_session && creation of symlink to freesurfer mri
         """
-        import os
         from shutil import copyfileobj
-        from warnings import warn
         from zipfile import ZipFile
         from glob2 import glob
 
         cookie = self.__jsession_request()
-        print("\nDownloading assessors for session %s." % self.session.get()[0])
-        uri = self.host + "/data/experiments/%s/assessors/ALL/files?format=zip" % self.session.get()[0]
-        zip = "assessors_ALL_files.zip"
+        uri = self.host + "/data/experiments/%s/assessors/%s/%s?format=zip" % (self.str_session, variety, vtype)
+        zip = 'assessors_%s_%s.zip' % (variety, vtype)
 
         try:
-            os.chdir(self.builddir)
+            self.ensuredir(self.dir_session)
+            os.chdir(self.dir_session)
             with open(zip, 'wb') as f:
                 r = self.__get_url(uri, headers=cookie, verify=False, stream=True)
                 copyfileobj(r.raw, f)
             z = ZipFile(zip, 'r')
-            z.extractall(self.builddir)
+            z.extractall(self.dir_session)
             z.close()
             os.remove(zip)
             p = glob(os.path.join('CNDA*freesurfer*', 'out', 'resources', 'DATA', 'files', '*', 'mri'))
@@ -346,7 +408,7 @@ class StageXnat(object):
             raise AssertionError(e.message)
 
         self.__jsession_expire(cookie)
-        print('Done downloading assessors for %s.\n' % self.session.get()[0])
+        print('Downloaded assessors %s to %s.\n' % (uri, zip))
         return
 
     def __download_ct(self, fnames, get_datadict, sessid=None, scanid=None, fdir=None):
@@ -358,16 +420,16 @@ class StageXnat(object):
         :param scanid is str:
         :param fdir is a filesystem path:
         """
-        import os
         from warnings import warn
 
         cookie = self.__jsession_request()
         if not sessid:
-            sessid = self.session.get()[0]
+            sessid = self.str_session
         if not scanid:
-            scanid = self.scan.get()[0]
+            scanid = self.str_scan
         if not fdir:
             fdir = self.__get_dicomdir(scanid)
+        self.ensuredir(fdir)
         os.chdir(fdir)
         print('\nBeginning process for session %s, scan %s.' % (sessid, scanid))
         fdict = get_datadict(cookie, sessid=sessid, scanid=scanid)
@@ -390,133 +452,6 @@ class StageXnat(object):
         self.__jsession_expire(cookie)
         return
 
-    def __download_files(self, fnames, get_datadict, sessid=None, scanid=None, fdir=None):
-        """
-        See also John Flavin's dcm2ni_wholeSession.py
-        :param fnames are file names:
-        :param get_datadict is a function that returns fdict and fdir:
-        :param sessid is str:
-        :param scanid is str:
-        :param fdir is a filesystem path:
-        """
-        import os
-        from warnings import warn
-
-        cookie = self.__jsession_request()
-        if not sessid:
-            sessid = self.session.get()[0]
-        if not scanid:
-            scanid = self.scan.get()[0]
-        if not fdir:
-            fdir = self.__get_dicomdir(scanid)
-        os.chdir(fdir)
-        print('\nBeginning process for session %s, scan %s.' % (sessid, scanid))
-
-        for fname in fnames:
-
-            print("Downloading file %s to %s." % (fname, fdir))
-            fdict = get_datadict(cookie, sessid=sessid, scanid=scanid)
-            for j, (name, path_dict) in enumerate(fdict.iteritems()):
-
-                if name == unicode(fname, 'utf-8'):
-                    if os.access(path_dict['absolutePath'], os.R_OK):
-                        self.__symlink(name, path_dict)
-                    else:
-                        try:
-                            with open(name, 'wb') as f:
-                                r = self.__get_url(path_dict['URI'], headers=cookie, verify=False, stream=True)
-                                for block in r.iter_content(1024):
-                                    if not block:
-                                        break
-                                    f.write(block)
-                            print('Downloaded file %s.' % name)
-                        except IOError as e:
-                            warn('fname must be a filename; dest must be a directory')
-                            raise AssertionError(e.message)
-                    path_dict['localPath'] = os.path.join(fdir, name)
-
-            os.chdir(self.builddir)
-            print('Done downloading %s.\n' % fname)
-
-        self.__jsession_expire(cookie)
-        return
-
-    def __download_legacy(self):
-        """
-        Is the legacy implementation from John Flavin's dcm2ni_wholeSession.py
-        """
-        import pydicom
-        import os
-        from warnings import warn
-        cookie = self.__jsession_request()
-        scanid_list = self.__get_scanid_list(cookie)
-
-        for scanid in scanid_list:
-            print('\nBeginning process for scan %s.' % scanid)
-            skip_scan = False
-
-            scan_resources = self.__get_scan_resources(cookie, scanid)
-            dcm_resource_list = [res for res in scan_resources if res["label"] == "DICOM"]
-            if len(dcm_resource_list) == 0:
-                print("Scan %s has no DICOM resource. Skipping." % scanid)
-                continue
-            elif len(dcm_resource_list) > 1:
-                print("Scan %s has more than one DICOM resource. Skipping." % scanid)
-                continue
-            dicom_resource = dcm_resource_list[0]
-            if int(dicom_resource["file_count"]) == 0:
-                print("DICOM resource for scan %s has no files. Skipping." % scanid)
-                continue
-
-            # download DICOMs
-            print("Downloading files for scan %s." % scanid)
-            dcmdict = self.__get_dicomdict(cookie, sessid=self.session.get()[0], scanid=scanid)
-            os.chdir(self.builddir)
-            for j, (name, path_dict) in enumerate(dcmdict.iteritems()):
-                skip_scan = False
-
-                if os.access(path_dict['absolutePath'], os.R_OK):
-                    self.__symlink(name, path_dict)
-                else:
-                    try:
-                        with open(name, 'wb') as f:
-                            r = self.__get_url(path_dict['URI'], headers=cookie, verify=False, stream=True)
-                            if not r.ok:
-                                print("Could not download file %s. Skipping scan %s." % (name, scanid))
-                                skip_scan = True
-                                continue  # break out of file download loop
-                            for block in r.iter_content(1024):
-                                if not block:
-                                    break
-                                f.write(block)
-                        print('Downloaded file %s.' % name)
-                    except IOError as e:
-                        warn('fname must be a filename; dest must be a directory')
-                        raise AssertionError(e.message)
-
-                if j == 0 and not skip_scan:
-                    dcm = pydicom.dcmread(name)
-                    modality_header = dcm.get((0x0008, 0x0060), None)
-                    if modality_header:
-                        skip_scan = self.__check_skip_scan(name, modality_header)
-                        if skip_scan:
-                            print('Scan %s is a secondary capture. Skipping.' % scanid)
-                            continue  # break out of file download loop
-                    else:
-                        print('Could not read modality from DICOM headers. Skipping.')
-                        skip_scan = True
-                        continue  # break out of file download loop
-
-                path_dict['localPath'] = os.path.join(self.builddir, name)
-
-            os.chdir(self.builddir)
-            if skip_scan:
-                continue # break out of the rest of the processing for scanid
-            print('Done downloading scan %s.\n' % scanid)
-
-        self.__jsession_expire(cookie)
-        return
-
     def __download_scan(self, get_datadict, sessid=None, scanid=None, fdir=None):
         """
         See also John Flavin's dcm2ni_wholeSession.py
@@ -525,17 +460,17 @@ class StageXnat(object):
         :param scanid is str:
         :param fdir is a filesystem path:
         """
-        import os
         import pydicom
         from warnings import warn
 
         cookie = self.__jsession_request()
         if not sessid:
-            sessid = self.session.get()[0]
+            sessid = self.str_session
         if not scanid:
-            scanid = self.scan.get()[0]
+            scanid = self.str_scan
         if not fdir:
             fdir = self.__get_dicomdir(scanid)
+        self.ensuredir(fdir)
         os.chdir(fdir)
         print('\nBeginning process for scan %s.' % scanid)
         scan_resources = self.__get_scan_resources(cookie, scanid)
@@ -594,6 +529,133 @@ class StageXnat(object):
         self.__jsession_expire(cookie)
         return
 
+    def __download_files(self, fnames, get_datadict, sessid=None, scanid=None, fdir=None):
+        """
+        See also John Flavin's dcm2ni_wholeSession.py
+        :param fnames are file names:
+        :param get_datadict is a function that returns fdict and fdir:
+        :param sessid is str:
+        :param scanid is str:
+        :param fdir is a filesystem path:
+        """
+        from warnings import warn
+
+        cookie = self.__jsession_request()
+        if not sessid:
+            sessid = self.str_session
+        if not scanid:
+            scanid = self.str_scan
+        if not fdir:
+            fdir = self.__get_dicomdir(scanid)
+        self.ensuredir(fdir)
+        os.chdir(fdir)
+        print('\nBeginning process for session %s, scan %s.' % (sessid, scanid))
+
+        for fname in fnames:
+
+            print("Downloading file %s to %s." % (fname, fdir))
+            fdict = get_datadict(cookie, sessid=sessid, scanid=scanid)
+            for j, (name, path_dict) in enumerate(fdict.iteritems()):
+
+                if name == unicode(fname, 'utf-8'):
+                    if os.access(path_dict['absolutePath'], os.R_OK):
+                        self.__symlink(name, path_dict)
+                    else:
+                        try:
+                            with open(name, 'wb') as f:
+                                r = self.__get_url(path_dict['URI'], headers=cookie, verify=False, stream=True)
+                                for block in r.iter_content(1024):
+                                    if not block:
+                                        break
+                                    f.write(block)
+                            print('Downloaded file %s.' % name)
+                        except IOError as e:
+                            warn('fname must be a filename; dest must be a directory')
+                            raise AssertionError(e.message)
+                    path_dict['localPath'] = os.path.join(fdir, name)
+
+            os.chdir(self.builddir)
+            print('Done downloading %s.\n' % fname)
+
+        self.__jsession_expire(cookie)
+        return
+
+    def __download_legacy(self):
+        """
+        Is the legacy implementation from John Flavin's dcm2ni_wholeSession.py
+        """
+        import pydicom
+        from warnings import warn
+        cookie = self.__jsession_request()
+        scanid_list = self.__get_scanid_list(cookie)
+
+        for scanid in scanid_list:
+            print('\nBeginning process for scan %s.' % scanid)
+            skip_scan = False
+
+            scan_resources = self.__get_scan_resources(cookie, scanid)
+            dcm_resource_list = [res for res in scan_resources if res["label"] == "DICOM"]
+            if len(dcm_resource_list) == 0:
+                print("Scan %s has no DICOM resource. Skipping." % scanid)
+                continue
+            elif len(dcm_resource_list) > 1:
+                print("Scan %s has more than one DICOM resource. Skipping." % scanid)
+                continue
+            dicom_resource = dcm_resource_list[0]
+            if int(dicom_resource["file_count"]) == 0:
+                print("DICOM resource for scan %s has no files. Skipping." % scanid)
+                continue
+
+            # download DICOMs
+            print("Downloading files for scan %s." % scanid)
+            dcmdict = self.__get_dicomdict(cookie, sessid=self.str_session, scanid=scanid)
+            self.ensuredir(self.builddir)
+            os.chdir(self.builddir)
+            for j, (name, path_dict) in enumerate(dcmdict.iteritems()):
+                skip_scan = False
+
+                if os.access(path_dict['absolutePath'], os.R_OK):
+                    self.__symlink(name, path_dict)
+                else:
+                    try:
+                        with open(name, 'wb') as f:
+                            r = self.__get_url(path_dict['URI'], headers=cookie, verify=False, stream=True)
+                            if not r.ok:
+                                print("Could not download file %s. Skipping scan %s." % (name, scanid))
+                                skip_scan = True
+                                continue  # break out of file download loop
+                            for block in r.iter_content(1024):
+                                if not block:
+                                    break
+                                f.write(block)
+                        print('Downloaded file %s.' % name)
+                    except IOError as e:
+                        warn('fname must be a filename; dest must be a directory')
+                        raise AssertionError(e.message)
+
+                if j == 0 and not skip_scan:
+                    dcm = pydicom.dcmread(name)
+                    modality_header = dcm.get((0x0008, 0x0060), None)
+                    if modality_header:
+                        skip_scan = self.__check_skip_scan(name, modality_header)
+                        if skip_scan:
+                            print('Scan %s is a secondary capture. Skipping.' % scanid)
+                            continue  # break out of file download loop
+                    else:
+                        print('Could not read modality from DICOM headers. Skipping.')
+                        skip_scan = True
+                        continue  # break out of file download loop
+
+                path_dict['localPath'] = os.path.join(self.builddir, name)
+
+            os.chdir(self.builddir)
+            if skip_scan:
+                continue # break out of the rest of the processing for scanid
+            print('Done downloading scan %s.\n' % scanid)
+
+        self.__jsession_expire(cookie)
+        return
+
     def __check_skip_scan(self, name, modality_header):
         """
         For the first file in the list, we want to check its headers.
@@ -612,14 +674,14 @@ class StageXnat(object):
     def __get_assessor(self, cookie):
 
         # get list of objects
-        u = self.host + "/data/experiments/%s/assessors/ALL/resources/*freesurfer*/files?format=json" % self.session.get()[0]
+        u = self.host + "/data/experiments/%s/assessors/ALL/resources/*freesurfer*/files?format=json" % self.str_session
         r = self.__get_url(u, headers=cookie, verify=False)
 
         # John Flavin:  "I don't like the results being in a list, so I will build a dict keyed off file name"
         adict = {obj['Name']: {'URI': self.host+obj['URI']} for obj in r.json()["ResultSet"]["Result"]}
 
         # have to manually add absolutePath with a separate request
-        u = self.host + "/data/experiments/%s/assessors/All/resources/*freesurfer*/files?format=json&locator=absolutePath" % self.session.get()[0]
+        u = self.host + "/data/experiments/%s/assessors/All/resources/*freesurfer*/files?format=json&locator=absolutePath" % self.str_session
         r = self.__get_url(u, headers=cookie, verify=False)
         for a in r.json()["ResultSet"]["Result"]:
             adict[a['Name']]['absolutePath'] = self.host+a['absolutePath']
@@ -645,31 +707,29 @@ class StageXnat(object):
         :return ddict dictionary with 'Name', 'URI' from requests.json()["ResultSet"]["Result"]:
         """
         if not sessid:
-            sessid = self.session.get()[0]
+            sessid = self.str_session
         if not scanid:
             raise AssertionError("self.__get_dicomdict has no scanid")
 
         # get list of DICOMs
-        print('Get list of DICOM files for scan %s.' % scanid)
         u = self.host + "/data/experiments/%s/scans/%s/resources/DICOM/files?format=json" % (sessid, scanid)
         r = self.__get_url(u, headers=cookie, verify=False)
 
         # John Flavin:  "I don't like the results being in a list, so I will build a dict keyed off file name"
-        ddict = {dicom['Name']: {'URI': self.host+dicom['URI']} for dicom in r.json()["ResultSet"]["Result"]}
+        ddict = {dicom['Name']: {'URI': self.host+dicom['URI']}
+                 for dicom in r.json()["ResultSet"]["Result"]}
 
-        # have to manually add absolutePath with a separate request
-        u = self.host + "/data/experiments/%s/scans/%s/resources/DICOM/files?format=json&locator=absolutePath" % (
-            sessid, scanid)
+        # John Flavin:  manually add absolutePath with a separate request
+        u = self.host + "/data/experiments/%s/scans/%s/resources/DICOM/files?format=json&locator=absolutePath" % (sessid, scanid)
         r = self.__get_url(u, headers=cookie, verify=False)
         for dcm in r.json()["ResultSet"]["Result"]:
             ddict[dcm['Name']]['absolutePath'] = self.host+dcm['absolutePath']
         return ddict
 
     def __get_dicomdir(self, scanid):
-        import os
         if not scanid:
-            return self.builddir
-        ddir = os.path.join(self.builddir, scanid)
+            return self.dir_session
+        ddir = os.path.join(self.dir_session, scanid)
         self.ensuredir(ddir)
         for f in os.listdir(ddir):
             os.remove(os.path.join(ddir, f))
@@ -696,31 +756,31 @@ class StageXnat(object):
         """
 
         # get list of DICOMs
-        print('Get list of RawData files for session %s.' % self.session.get()[0])
-        u = self.host + "/data/experiments/%s/resources/RawData/files?format=json" % self.session.get()[0]
+        print('__get_rawdatadict:  for session %s.' % self.str_session)
+        u = self.host + "/data/experiments/%s/resources/RawData/files?format=json" % self.str_session
         r = self.__get_url(u, headers=cookie, verify=False)
 
         # John Flavin:  "I don't like the results being in a list, so I will build a dict keyed off file name"
         rddict = {rd['Name']: {'URI': self.host+rd['URI']} for rd in r.json()["ResultSet"]["Result"]}
 
         # have to manually add absolutePath with a separate request
-        u = self.host + "/data/experiments/%s/resources/RawData/files?format=json&locator=absolutePath" % self.session.get()[0]
+        u = self.host + "/data/experiments/%s/resources/RawData/files?format=json&locator=absolutePath" % self.str_session
         r = self.__get_url(u, headers=cookie, verify=False)
         for rd1 in r.json()["ResultSet"]["Result"]:
             rddict[rd1['Name']]['absolutePath'] = self.host+rd1['absolutePath']
         return rddict
 
     def __get_scan_resources(self, cookie, scanid):
-        print("Get scan resources for scan %s." % scanid)
-        u = self.host + "/data/experiments/%s/scans/%s/resources?format=json" % (self.session.get()[0], scanid)
+        print("__get_scan_resources:  for scan %s." % scanid)
+        u = self.host + "/data/experiments/%s/scans/%s/resources?format=json" % (self.str_session, scanid)
         r = self.__get_url(u, headers=cookie, verify=False)
         resources = r.json()["ResultSet"]["Result"]
         print('Found resources %s.' % ', '.join(res["label"] for res in resources))
         return resources
 
     def __get_scanid_list(self, cookie):
-        print("Get scan list for session ID %s." % self.session.get()[0])
-        u = self.host + "/data/experiments/%s/scans?format=json" % self.session.get()[0]
+        print("__get_scanid_list:  for session ID %s." % self.str_session)
+        u = self.host + "/data/experiments/%s/scans?format=json" % self.str_session
         r = self.__get_url(u, headers=cookie, verify=False)
         request_result_list = r.json()["ResultSet"]["Result"]
         idl = [scan['ID'] for scan in request_result_list]
@@ -785,7 +845,6 @@ class StageXnat(object):
         return bf
 
     def __symlink(self, name, path_dict):
-        import os
         from shutil import copy as fileCopy
         try:
             os.symlink(path_dict['absolutePath'], name)
@@ -800,7 +859,7 @@ class StageXnat(object):
         time.sleep(self.sleep_duration)
         return
 
-    def __init__(self, uid, pwd, prj="CCIR_00754", sbj="HYGLY48", ses="CNDA_E249152", scn="*", cch="/work/SubjectsStash"):
+    def __init__(self, uid, pwd, prj="CCIR_00754", sbj="HYGLY48", ses="CNDA_E249152", scn="84", cch="/work/SubjectsStash"):
         """
         :param uid:
         :param pwd:
@@ -810,7 +869,6 @@ class StageXnat(object):
         :param scn:
         :param cch is the preferred cache directory:
         """
-        import os
         self.host     = 'https://cnda.wustl.edu'
         self.uid      = uid
         self.pwd      = pwd
@@ -818,5 +876,5 @@ class StageXnat(object):
         self.xnat     = pyxnat.Interface(self.host, user=self.uid, password=self.pwd, cachedir=self.builddir)
         self.project  = self.xnat.select.project(prj)
         self.subject  = self.project.subject(sbj)
-        self.session  = self.subject.experiments(ses)
+        self.session  = self.subject.experiment(ses)
         self.scan     = self.session.scan(scn)

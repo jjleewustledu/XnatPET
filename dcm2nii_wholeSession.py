@@ -30,7 +30,7 @@ parser.add_argument("--host", default="https://cnda.wustl.edu", help="CNDA host"
 parser.add_argument("--user", help="CNDA username", required=True)
 parser.add_argument("--password", help="Password", required=True)
 parser.add_argument("--session", help="Session ID", required=True)
-parser.add_argument("--dicomdir", help="Root output directory for DICOM files", required=True)
+parser.add_argument("--builddir", help="Root output directory for DICOM files", required=True)
 parser.add_argument("--niftidir", help="Root output directory for NIFTI files", required=True)
 parser.add_argument("--overwrite", help="Overwrite NIFTI files if they exist")
 parser.add_argument("--nii", help="Create .nii file, or .img/.hdr pair")

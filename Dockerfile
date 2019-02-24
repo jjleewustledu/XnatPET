@@ -47,11 +47,11 @@ VOLUME /work
 
 # setup pyxnat, interfile packages
 WORKDIR /work
-RUN git clone https://github.com/jjleewustledu/pyxnat.git && \
-    git clone https://github.com/jjleewustledu/interfile.git
-WOKRDIR /work/pyxnat
+RUN git clone https://github.com/jjleewustledu/pyxnat.git
+RUN git clone https://github.com/jjleewustledu/interfile.git
+WORKDIR /work/pyxnat
 RUN python setup.py install
-WOKRDIR /work/interfile
+WORKDIR /work/interfile
 RUN python setup.py install
 
 # setup NRG XNAT Docker

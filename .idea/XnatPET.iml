@@ -10,6 +10,7 @@
     <orderEntry type="module" module-name="interfile" />
     <orderEntry type="module" module-name="NIPET" />
     <orderEntry type="module" module-name="NiftyPETy" />
+    <orderEntry type="module" module-name="NiftyPETy" />
   </component>
   <component name="TestRunnerService">
     <option name="projectConfiguration" value="pytest" />
