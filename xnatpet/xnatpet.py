@@ -70,58 +70,112 @@ class StageXnat(object):
     # PRIMITIVES #########################################################################
 
     def projects(self, interface=None):
-        if not interface:
-            interface = self.xnat
-        return interface.projects('*')
+        """
+        :param interface:
+        :return all pyxnat.projects for XNAT interface:
+        """
+        if interface:
+            self.xnat = interface
+        return self.xnat.projects('*')
 
     def subjects(self, prj=None):
-        if not prj:
-            prj = self.project
-        return prj.subjects('*')
+        """
+        :param prj:
+        :return all pyxnat.subjects for project:
+        """
+        if prj:
+            self.project = prj
+        return self.project.subjects('*')
 
     def sessions(self, sbj=None):
-        if not sbj:
-            sbj = self.subject
-        return sbj.experiments('*')
+        """
+        :param sbj:
+        :return all pyxnat.experiments for subject:
+        """
+        if sbj:
+            self.subject = sbj
+        return self.subject.experiments('*')
 
     def scans(self, ses=None):
-        if not ses:
-            ses = self.session
-        return ses.scans('*')
+        """
+        :param ses:
+        :return all pyxnat.session.scans for session:
+        """
+        if ses:
+            self.session = ses
+        return self.session.scans('*')
 
 
 
     # STAGING #########################################################################
 
-    def stage_project(self):
+    def stage_project(self, constraints=None, modal='pet', all_scans=False):
+        """
+        https://groups.google.com/forum/#!topic/xnat_discussion/SHWAxHNb570
+        :param constraints, e.g., constraints = [('xnat:petSessionData/DATE', '>', '2017-12-31'), 'AND']:
+        :param modal from 'pet', 'mr', 'ct':
+        :param all_scans is bool:
+        :return:
+        """
         for s in self.subjects():
-            self.stage_subject(s)
+            self.stage_subject(s, constraints, modal, all_scans)
         return
 
-    def stage_subject(self, sbj):
-        for s in self.sessions(sbj):
-            self.stage_session(s)
+    def stage_subject(self, sbj=None, constraints=None, modal='pet', all_scans=False):
+        """
+        https://groups.google.com/forum/#!topic/xnat_discussion/SHWAxHNb570
+        :param sbj is a pyxnat subject:
+        :param constraints, e.g., constraints = [('xnat:petSessionData/DATE', '>', '2017-12-31'), 'AND']:
+        :param modal from 'pet', 'mr', 'ct':
+        :param all_scans is bool:
+        :return:
+        """
+        if sbj:
+            self.subject = sbj
+        if not constraints:
+            for s in self.sessions(self.subject):
+                self.stage_session(s)
+            return
+
+        tbl = self.xnat.select(
+            'xnat:%sSessionData'%modal,
+            ['xnat:%sSessionData/SESSION_ID'%modal, 'xnat:%sSessionData/DATE'%modal]).where(constraints)
+        lst = tbl.as_list() # tbl is JsonTable
+        for l_ in lst[1:]:
+            self.session = self.subject.experiment(l_[0])
+            self.stage_session(self.session, all_scans)
         return
 
-    def stage_session(self, ses):
+    def stage_session(self, ses=None, all_scans=False):
+        """
+        https://groups.google.com/forum/#!topic/xnat_discussion/SHWAxHNb570
+        :param ses is a pyxnat experiment:
+        :param all_scans is bool:
+        :return:
+        """
         while self.on_schedule() and not self.__resources_available():
             self.__wait()
-        for s in self.scans(ses):
-            self.stage_scan(s)
+
+        if ses:
+            self.session = ses
+        self.stage_ct(self.subject)
         for t in self.tracers:
-            self.stage_rawdata(ses, t)
+            self.stage_rawdata(self.session, t)
+        if all_scans:
+            for s in self.scans(self.session):
+                self.stage_scan(s)
         return
 
-    def stage_scan(self, scn, ses=None, sdir=None):
-        self.scan = scn
+    def stage_scan(self, scn=None, ses=None, sdir=None):
+        if scn:
+            self.scan = scn
         if not ses:
             ses = self.session
         if not sdir:
             sdir = self.dir_scan
-        return self.stage_dicoms_scan(scn, ses=ses, ddir=sdir)
+        return self.stage_dicoms_scan(self.scan, ses=ses, ddir=sdir)
 
     def stage_ct(self, obj):
-
         # recursion for Subjects
         if isinstance(obj, pyxnat.core.resources.Subject):
             addict = None
@@ -179,7 +233,7 @@ class StageXnat(object):
             self.__download_files([ds[0]], self.__get_dicomdict, scanid=scn.id())
         return pydicom.dcmread(os.path.join(self.dir_scan, ds[0]))
 
-    def stage_dicoms_scan(self, scn, ses=None, fs='*.dcm', ddir=None):
+    def stage_dicoms_scan(self, scn=None, ses=None, fs='*.dcm', ddir=None):
         """
         stages all DICOMs for a scan
         :param scn:
@@ -188,15 +242,16 @@ class StageXnat(object):
         :param ddir:
         :return __download_scan():
         """
-        self.scan = scn
+        if scn:
+            self.scan = scn
         if not ses:
             ses = self.session
         if not ddir:
             ddir = self.dir_scan
-        ds = scn.resources().files(fs).get()
-        return self.__download_scan(ds, self.__get_dicomdict, sessid=ses.id(), scanid=scn.id(), fdir=ddir)
+        ds = self.scan.resources().files(fs).get()
+        return self.__download_scan(ds, self.__get_dicomdict, sessid=ses.id(), scanid=self.scan.id(), fdir=ddir)
 
-    def stage_rawdata(self, ses, tracer='Fluorodeoxyglucose'):
+    def stage_rawdata(self, ses=None, tracer='Fluorodeoxyglucose'):
         """
         downloads and arranges session rawdata as .dcm files in class param dir_rawdata and
         .bf files according to final destinations chosen by class methods move_rawdata and rawdata_destination
@@ -207,19 +262,20 @@ class StageXnat(object):
         while self.on_schedule() and not self.__resources_available():
             self.__wait()
 
-        self.session = ses
+        if ses:
+            self.session = ses
         if not os.path.exists(self.dir_rawdata):
             os.makedirs(self.dir_rawdata)
         os.chdir(self.dir_rawdata)
-        ds = self.stage_dicoms_rawdata(ses)
-        bs = self.stage_bfiles_rawdata(ses, ds0=ds, tracer=tracer) # all .dcm -> .bf
+        ds = self.stage_dicoms_rawdata(self.session)
+        bs = self.stage_bfiles_rawdata(self.session, ds0=ds, tracer=tracer) # all .dcm -> .bf
         dests = []
         for b in bs:
             dests.append(self.move_rawdata(self.filename2bf(b), tracer))
             dests.append(self.move_rawdata(self.filename2dcm(b), tracer)) # .dcm has information needed by move_rawdata
         return dests
 
-    def stage_dicoms_rawdata(self, ses, ds0='*.dcm'):
+    def stage_dicoms_rawdata(self, ses=None, ds0='*.dcm'):
         """
         downloads all .dcm files from session resources RawData to class param dir_rawdata;
         these may be parsed in further actions
@@ -227,11 +283,13 @@ class StageXnat(object):
         :param ds0 is a string specifier for requests from ses:
         :return ds is the list of downloaded DICOM filenames:
         """
-        ds = ses.resources().files(ds0).get()
+        if ses:
+            self.session = ses
+        ds = self.session.resources().files(ds0).get()
         self.__download_files(ds, self.__get_rawdatadict, fdir=self.dir_rawdata)
         return ds
 
-    def stage_bfiles_rawdata(self, ses, ds0='*.dcm', tracer='Fluorodeoxyglucose'):
+    def stage_bfiles_rawdata(self, ses=None, ds0='*.dcm', tracer='Fluorodeoxyglucose'):
         """
         downloads .bf files from the session resources RawData to class param dir_rawdata
         :param ses is a pxnat session experiment:
@@ -239,14 +297,16 @@ class StageXnat(object):
         :param tracer is from class param tracers:
         :return bs is the list of downloaded .bf files:
         """
+        if ses:
+            self.session = ses
         if not ds0:
             return False
         ds = []
         if isinstance(ds0, str):
-            ds = ses.resources().files(ds0).get() # expands specifier ds0
+            ds = self.session.resources().files(ds0).get() # expands specifier ds0
         if isinstance(ds0, list):
             for f in ds0:
-                ds.append(ses.resources().files(f).get()) # expands f as needed
+                ds.append(self.session.resources().files(f).get()) # expands f as needed
             ds = [item for sublist in ds for item in sublist] # flattens list of lists
             # From Alex Martelli
             # https://stackoverflow.com/questions/952914/how-to-make-a-flat-list-out-of-list-of-lists?page=1&tab=votes#tab-top

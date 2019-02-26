@@ -62,21 +62,26 @@ class TestStaging(unittest.TestCase):
     def setUp(self):
         self.sxnat = StageXnat(uid=os.getenv('CNDA_UID'), pwd=os.getenv('CNDA_PWD'), cch='/home2/jjlee/Docker/XnatPET/xnatpet/tests')
 
+    def test_constraints_subject(self):
+        """https://groups.google.com/forum/#!topic/xnat_discussion/SHWAxHNb570"""
+        self.sxnat.tracers = ['Fluorodeoxyglucose']
+        constraints = [('xnat:petSessionData/PROJECT', '=', 'CCIR_00754'), ('xnat:petSessionData/DATE', '>', '2018-05-16'), 'AND']
+        d = self.sxnat.stage_subject(None, constraints)
+        print('\ntest_constraints_subject\n')
+
+    def test_constraints_xnat(self):
+        constraints = [('xnat:ctSessionData/DATE','>','2012-09-01'), 'AND']
+        tbl = self.sxnat.xnat.select(
+            'xnat:ctSessionData', ['xnat:ctSessionData/SESSION_ID', 'xnat:ctSessionData/DATE']).where(constraints)
+        lst = tbl.as_list()
+        self.assertEqual(lst[1][0], 'CNDA_E116965')
+        self.assertEqual(lst[1][1], '2014-03-27')
+        print('\ntest_constraints_xnat\n')
+        print(lst)
+
     def test_stage_subject(self):
         d = self.sxnat.stage_subject(self.sxnat.session)
         print('\ntest_stage_session\n')
-
-    def test_stage_sessions_after_date(self):
-        """https://groups.google.com/forum/#!topic/xnat_discussion/SHWAxHNb570"""
-        constraints = [('xnat:petSessionData/DATE', '>', '2017-12-31'), 'AND']
-        tbl = self.sxnat.xnat.select(
-            'xnat:petSessionData', ['xnat:petSessionData/SESSION_ID', 'xnat:petSessionData/DATE']).where(constraints)
-        lst = tbl.as_list() # tbl is JsonTable
-        print('\ntest_stage_sessions_after_date\n')
-        print(lst)
-        for l in lst[1:]:
-            self.sxnat.session = self.sxnat.subject.experiment(l[0])
-            self.sxnat.stage_session()
 
     def test_stage_session(self):
         d = self.sxnat.stage_session(self.sxnat.session)
@@ -99,13 +104,6 @@ class TestStaging(unittest.TestCase):
         print('\ntest_stage_ct\n')
         print(d.keys()[0])
         print(d.values()[0])
-
-    def test_stage_cts_after_date(self):
-        constraints = [('xnat:ctSessionData/DATE','>','2012-09-01'), 'AND']
-        tbl = self.sxnat.xnat.select(
-            'xnat:ctSessionData', ['xnat:ctSessionData/SESSION_ID', 'xnat:ctSessionData/DATE']).where(constraints)
-        print('\ntest_stage_ct_after_date\n')
-        print(tbl.as_list())
 
     def test_stage_umaps(self):
         d = self.sxnat.stage_umaps(self.sxnat.session)
