@@ -53,6 +53,8 @@ WORKDIR /work/pyxnat
 RUN python setup.py install
 WORKDIR /work/interfile
 RUN python setup.py install
+WORKDIR /work/xnatpet
+RUN python setup.py install
 
 # setup NRG XNAT Docker
 WORKDIR /work
