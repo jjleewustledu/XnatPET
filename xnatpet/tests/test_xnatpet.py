@@ -6,7 +6,7 @@ from uuid import uuid1
 class TestPrimitives(unittest.TestCase):
 
     def setUp(self):
-        self.sxnat = StageXnat(uid=os.getenv('CNDA_UID'), pwd=os.getenv('CNDA_PWD'), cch=os.getcwd())
+        self.sxnat = StageXnat(uid=os.getenv('CNDA_UID'), pwd=os.getenv('CNDA_PWD'), prefix=os.getcwd())
 
     def test_ctor(self):
         self.assertTrue(self.sxnat, self.sxnat.__str__())
@@ -60,7 +60,15 @@ class TestPrimitives(unittest.TestCase):
 class TestStaging(unittest.TestCase):
 
     def setUp(self):
-        self.sxnat = StageXnat(uid=os.getenv('CNDA_UID'), pwd=os.getenv('CNDA_PWD'), cch='/home2/jjlee/Docker/XnatPET/xnatpet/tests')
+        self.sxnat = StageXnat(
+            prj="CCIR_00559",
+            uid=os.getenv('CNDA_UID'), pwd=os.getenv('CNDA_PWD'),
+            prefix='/scratch/jjlee')
+
+    def test_stage_constraints(self):
+        constraints = [('xnat:petSessionData/DATE', '>', '2018-01-01'), 'AND']
+        d = self.sxnat.stage_constraints(constraints)
+        print('\ntest_stage_constraints\n')
 
     def test_constraints_subject(self):
         """https://groups.google.com/forum/#!topic/xnat_discussion/SHWAxHNb570"""
@@ -88,6 +96,7 @@ class TestStaging(unittest.TestCase):
         print('\ntest_stage_session\n')
 
     def test_stage_scan(self):
+        self.sxnat.scan = self.session.scan('84')
         d = self.sxnat.stage_scan(self.sxnat.session.scan('84'))
         self.assertEqual(u'HYGLY48.MR.CCIR-00700_CCIR-00754_Arbelaez.84.95.20180517.120412.rdlrsn.dcm', d.keys()[0])
         print('\ntest_stage_scan\n')
@@ -125,7 +134,7 @@ class TestStaging(unittest.TestCase):
 class TestRawData(unittest.TestCase):
 
     def setUp(self):
-        self.sxnat = StageXnat(uid=os.getenv('CNDA_UID'), pwd=os.getenv('CNDA_PWD'), cch='/home2/jjlee/Docker/XnatPET/xnatpet/tests')
+        self.sxnat = StageXnat(uid=os.getenv('CNDA_UID'), pwd=os.getenv('CNDA_PWD'), prefix='/home2/jjlee/Docker/XnatPET/xnatpet/tests')
 
     def test_stage_rawdata_FDG(self):
         d = self.sxnat.stage_rawdata(self.sxnat.session, tracer='Fluorodeoxyglucose')
@@ -180,7 +189,7 @@ class TestRawData(unittest.TestCase):
 class TestPyxnat(unittest.TestCase):
 
     def setUp(self):
-        self.sxnat = StageXnat(uid=os.getenv('CNDA_UID'), pwd=os.getenv('CNDA_PWD'), cch='/home2/jjlee/Docker/XnatPET/xnatpet/tests')
+        self.sxnat = StageXnat(uid=os.getenv('CNDA_UID'), pwd=os.getenv('CNDA_PWD'), prefix='/home2/jjlee/Docker/XnatPET/xnatpet/tests')
 
     _modulepath = os.path.dirname(os.path.abspath(__file__))
     _id_set1 = {

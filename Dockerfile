@@ -47,16 +47,19 @@ VOLUME /work
 
 # setup pyxnat, interfile packages
 WORKDIR /work
-RUN git clone https://github.com/jjleewustledu/pyxnat.git
-RUN git clone https://github.com/jjleewustledu/interfile.git
-WORKDIR /work/pyxnat
-RUN python setup.py install
-WORKDIR /work/interfile
-RUN python setup.py install
-WORKDIR /work
-RUN python setup.py install
+RUN git clone https://github.com/jjleewustledu/pyxnat.git && git clone https://github.com/jjleewustledu/interfile.git
+#WORKDIR /work/pyxnat
+#RUN python setup.py install
+#WORKDIR /work/interfile
+#RUN python setup.py install
+#WORKDIR /work
+#RUN python setup.py install # xnatpet
+# Aternatively, install pyxnat, interfile and xnatpet manually, then issue
+# > docker commit xnatpet-container jjleewustedu/xnatpet-image:manual_install
 
 # setup NRG XNAT Docker
+ENV CNDA_UID $CNDA_UID
+ENV CNDA_PWD $CNDA_PWD
 WORKDIR /work
 COPY orchestrate.py /usr/local/bin
 
