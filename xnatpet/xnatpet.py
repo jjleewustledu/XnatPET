@@ -946,12 +946,12 @@ class StageXnat(object):
 if __name__ == '__main__':
     import argparse
 
-    p = argparse.ArgumentParser(description='stage data from XNAT server')
-    p.add_argument('--prefix',
-                   metavar='/path/to/project-level-data',
+    p = argparse.ArgumentParser(description='stages data from XNAT server to local filesystem')
+    p.add_argument('-p', '--prefix',
+                   metavar='/path/to/data',
                    required=True,
                    help='location of project-level data')
-    p.add_argument('--proj',
+    p.add_argument('-j', '--proj',
                    metavar='PROJECT_ID',
                    required=True,
                    help='project ID as assigned on XNAT')
