@@ -334,8 +334,8 @@ class StageXnat(object):
         :return __download_assessors():
         """
         from glob2 import glob
-        if os.path.isdir(
-                glob(os.path.join(self.dir_session, self.str_session + '_freesurfer_*'))[0]):
+        fs = glob(os.path.join(self.dir_session, self.str_session + '_freesurfer_*'))
+        if fs and os.path.isdir(fs[0]):
             return
         return self.__download_assessors()
 
@@ -566,7 +566,7 @@ class StageXnat(object):
         print('\n__download_scan:  session %s, scan %s.\n' % (sessid, scanid))
         ddict = get_datadict(cookie, sessid=sessid, scanid=scanid)
         for j, (name, path_dict) in enumerate(ddict.iteritems()):
-            print("downloading file %s to %s." % (name, fdir))
+            #print("downloading file %s to %s." % (name, fdir))
             try:
                 with open(name, 'wb') as f:
                     r = self.__get_url(path_dict['URI'], headers=cookie, verify=False, stream=True)
@@ -807,7 +807,7 @@ class StageXnat(object):
         """
 
         # get list of DICOMs
-        print('__get_rawdatadict:  for session %s.' % self.str_session)
+        #print('__get_rawdatadict:  for session %s.' % self.str_session)
         u = self.host + "/data/experiments/%s/resources/RawData/files?format=json" % self.str_session
         r = self.__get_url(u, headers=cookie, verify=False)
 
