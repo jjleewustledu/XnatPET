@@ -5,7 +5,8 @@
     usage: xnatpet.py [-h] -p <path> -j <ID> -c
     ['<param>', '<logical>', '<value>', '<LOGICAL>']
     
-**xnatpet** stages data from XNAT server to local filesystem; 
+##xnatpet stages data from XNAT server to local filesystem;
+
     e.g.:  python xnatpet.py -p /path/to/projects -j PROJECT_ID \
                              -c [('xnat:petSessionData/DATE', '>', '2018-01-01'), 'AND']
     
