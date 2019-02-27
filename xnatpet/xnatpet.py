@@ -967,12 +967,15 @@ if __name__ == '__main__':
                    required=True,
                    help='project ID as known by XNAT')
     p.add_argument('-c', '--constraints',
-                   metavar="\"[(\'<param>\', \'<logical>\', \'<value>\'), \'<LOGICAL>\']\"",
+                   metavar="\" [('<param>', '<logical>', '<value>'), '<LOGICAL>'] \"",
                    default=None,
-                   required=True,
+                   required=False,
                    help='must express the constraint API of pyxnat;'
                         'see also https://groups.google.com/forum/#!topic/xnat_discussion/SHWAxHNb570')
-    # ' \"[(\'<param>\', \'<logical>\', \'<value>\'), \'<LOGICAL>\']\" '
+    # \"[(\'<param>\', \'<logical>\', \'<value>\'), \'<LOGICAL>\']\"
     args = p.parse_args()
     r = StageXnat(os.getenv('CNDA_UID'), os.getenv('CNDA_PWD'), prefix=args.prefix, prj=args.proj)
-    r.stage_constraints(args.constraints)
+    if args.constraints:
+        r.stage_project(args.constraints)
+    else:
+        r.stage_constraints()

@@ -64,7 +64,7 @@ RUN cd /work/pyxnat/    && python setup.py install && \
 # setup NRG XNAT Docker
 ENV XNATPET_PREFIX /scratch/jjlee/Singularity
 ENV XNATPET_PROJECT CNDA_00754
-ENV XNATPET_CONSTRAINTS "[('xnat:petSessionData/DATE', '>', '2018-01-01'), 'AND']"
+ENV XNATPET_CONSTRAINTS ' '
 WORKDIR /scratch/jjlee/Singularity
 
 CMD ["sh", "-c", "python /work/xnatpet/xnatpet.py -p $XNATPET_PREFIX -j $XNATPET_PROJECT -c $XNATPET_CONSTRAINTS"]
