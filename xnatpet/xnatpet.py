@@ -161,13 +161,16 @@ class StageXnat(object):
         :param all_scans is bool:
         :return:
         """
+        from warnings import warn
         while self.on_schedule() and not self.__resources_available():
             self.__wait()
 
         if ses:
             self.session = ses
-        if self.scans() and self.scans()[0]:
+        try:
             self.stage_scan(self.scans()[0]) # KLUDGE:  default scan will be ignored by stage_rawdata
+        except StopIteration as e:
+            warn(e.message)
         self.stage_ct(self.subject)
         self.stage_freesurfer()
         #self.stage_umaps()

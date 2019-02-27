@@ -65,10 +65,10 @@ class TestStaging(unittest.TestCase):
             uid=os.getenv('CNDA_UID'), pwd=os.getenv('CNDA_PWD'),
             prefix='/scratch/jjlee')
 
-    def test_stage_constraints(self):
+    def test_stage_project(self):
         constraints = [('xnat:petSessionData/DATE', '>', '2018-01-01'), 'AND']
-        d = self.sxnat.stage_constraints(constraints)
-        print('\ntest_stage_constraints\n')
+        d = self.sxnat.stage_project(constraints)
+        print('\ntest_stage_project\n')
 
     def test_constraints_subject(self):
         """https://groups.google.com/forum/#!topic/xnat_discussion/SHWAxHNb570"""
