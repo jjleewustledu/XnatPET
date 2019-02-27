@@ -113,11 +113,9 @@ class StageXnat(object):
 
     # STAGING #########################################################################
 
-    def stage_constraints(self, constraints=None):
-        if not constraints:
-            raise AssertionError('xnatpet.StageXnat.stage_constraints received no constraints')
-        for s in self.subjects():
-            self.stage_subject(s, constraints)
+    def stage_constraints(self, constraints=None, modal='pet'):
+        """synonym for stage_project"""
+        return self.stage_project(constraints, modal)
 
     def stage_project(self, constraints=None, modal='pet'):
         """
@@ -921,7 +919,7 @@ class StageXnat(object):
         time.sleep(self.sleep_duration)
         return
 
-    def __init__(self, uid, pwd, prj="CCIR_00754", sbj="HYGLY48", ses="CNDA_E249152", scn="1", prefix="/work/SubjectsStash"):
+    def __init__(self, uid, pwd, prefix="/work/SubjectsStash", prj="CCIR_00754", sbj="HYGLY48", ses="CNDA_E249152", scn="1"):
         """
         :param uid:
         :param pwd:
@@ -945,16 +943,27 @@ class StageXnat(object):
 
 if __name__ == '__main__':
     import argparse
-
-    p = argparse.ArgumentParser(description='stages data from XNAT server to local filesystem')
+    from argparse import RawDescriptionHelpFormatter
+    p = argparse.ArgumentParser(
+        description=
+        "xnatpet stages data from XNAT server to local filesystem; \n"
+        "e.g.:  python xnatpet.py -p /path/to/projects -j PROJECT_ID \\\n"
+        "       -c [('xnat:petSessionData/DATE', '>', '2018-01-01'), 'AND']",
+        formatter_class=RawDescriptionHelpFormatter)
     p.add_argument('-p', '--prefix',
-                   metavar='/path/to/data',
+                   metavar='<path>',
                    required=True,
-                   help='location of project-level data')
+                   help='path containing project-level data')
     p.add_argument('-j', '--proj',
-                   metavar='PROJECT_ID',
+                   metavar='<ID>',
                    required=True,
-                   help='project ID as assigned on XNAT')
+                   help='project ID as known by XNAT')
+    p.add_argument('-c', '--constraints',
+                   metavar="[('<param>', '<logical>', '<value>'), '<LOGICAL>']",
+                   default=None,
+                   required=True,
+                   help='must express the constraint API of pyxnat;'
+                        'see also https://groups.google.com/forum/#!topic/xnat_discussion/SHWAxHNb570')
     args = p.parse_args()
-
-    r = StageXnat(os.getenv('CNDA_UID'), os.getenv('CNDA_PWD'), prefix=args.prefix)
+    r = StageXnat(os.getenv('CNDA_UID'), os.getenv('CNDA_PWD'), prefix=args.prefix, prj=args.proj)
+    r.stage_project(args.constraints)

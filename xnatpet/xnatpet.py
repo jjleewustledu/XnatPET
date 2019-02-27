@@ -166,7 +166,8 @@ class StageXnat(object):
 
         if ses:
             self.session = ses
-        self.stage_scan(self.scans()[0]) # default scan will be ignored by stage_rawdata
+        if self.scans() and self.scans()[0]:
+            self.stage_scan(self.scans()[0]) # KLUDGE:  default scan will be ignored by stage_rawdata
         self.stage_ct(self.subject)
         self.stage_freesurfer()
         #self.stage_umaps()

@@ -1,7 +1,7 @@
 # XnatPET
 
 
-    $ python xnatpet.py -h
+
     usage: xnatpet.py [-h] -p <path> -j <ID> -c
     ['<param>', '<logical>', '<value>', '<LOGICAL>']
     

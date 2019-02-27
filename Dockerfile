@@ -58,17 +58,13 @@ RUN git clone https://github.com/jjleewustledu/pyxnat.git && git clone https://g
 # > docker commit xnatpet-container jjleewustledu/xnatpet-image:manual_install
 # > docker push jjleewustledu/xnatpet-image:manual_install
 # cluster> singularity pull docker://jjleewustledu/xnatpet-image:manual_install
+ADD finish_Docker_installs.sh /work/finish_Docker_installs.sh
 
 # setup NRG XNAT Docker
-ENV CNDA_UID $CNDA_UID
-ENV CNDA_PWD $CNDA_PWD
+ENV XNATPET_PREFIX /scratch/jjlee/Singularity
+ENV XNATPET_PROJECT CNDA_00754
+EVN XNATPET_CONSTRAINTS "[('xnat:petSessionData/DATE', '>', '2018-01-01'), 'AND']"
 WORKDIR /work
-COPY orchestrate.py /usr/local/bin
+ADD xnatpet/xnatpet.py /work/xnatpet.py
 
-# setup jupyter
-WORKDIR /work
-EXPOSE 7745
-ADD run_jupyter.sh /work/run_jupyter.sh
-RUN chmod +x /work/run_jupyter.sh
-
-CMD ["./run_jupyter.sh"]
+CMD ["sh", "-c", "python xnatpet.py -p $XNATPET_PREFIX -j $XNATPET_PROJECT -c $XNATPET_CONSTRAINTS"]
