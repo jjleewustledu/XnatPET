@@ -40,31 +40,34 @@ RUN pip --no-cache-dir install --upgrade \
     conda install -y -c conda-forge pydicom
 
 # setup filesystem
-RUN mkdir work
+RUN mkdir work && mkdir Singularity
 ENV HOME=/work
 ENV SHELL=/bin/bash
 VOLUME /work
+VOLUME /Singularity
 
 # setup pyxnat, interfile packages
-WORKDIR /work
-RUN git clone https://github.com/jjleewustledu/pyxnat.git && git clone https://github.com/jjleewustledu/interfile.git
-#WORKDIR /work/pyxnat
-#RUN python setup.py install
-#WORKDIR /work/interfile
-#RUN python setup.py install
-#WORKDIR /work
-#RUN python setup.py install # xnatpet
-# Aternatively, install pyxnat, interfile and xnatpet manually, then issue
+# https://stackoverflow.com/questions/26392227/python-setup-py-install-does-not-work-from-dockerfile-but-i-can-go-in-the-cont
+ADD pyxnat /work/pyxnat
+ADD interfile /work/interfile
+ADD xnatpet /work/xnatpet
+ADD setup.py /work/setup.py
+ADD README.md /work/README.md
+RUN cd /work/pyxnat/    && python setup.py install && \
+    cd /work/interfile/ && python setup.py install && \
+    cd /work/           && python setup.py install # xnatpet
+# Aternatively, install pyxnat, interfile and xnatpet manually using finish_Docker_installs.sh,
+# then issue:
 # > docker commit xnatpet-container jjleewustledu/xnatpet-image:manual_install
 # > docker push jjleewustledu/xnatpet-image:manual_install
 # cluster> singularity pull docker://jjleewustledu/xnatpet-image:manual_install
-ADD finish_Docker_installs.sh /work/finish_Docker_installs.sh
 
 # setup NRG XNAT Docker
-ENV XNATPET_PREFIX /scratch/jjlee/Singularity
+ENV XNATPET_PREFIX /Singularity
 ENV XNATPET_PROJECT CNDA_00754
-EVN XNATPET_CONSTRAINTS "[('xnat:petSessionData/DATE', '>', '2018-01-01'), 'AND']"
-WORKDIR /work
-ADD xnatpet/xnatpet.py /work/xnatpet.py
+ENV XNATPET_CONSTRAINTS "[('xnat:petSessionData/DATE', '>', '2018-01-01'), 'AND']"
+WORKDIR /Singularity
 
-CMD ["sh", "-c", "python xnatpet.py -p $XNATPET_PREFIX -j $XNATPET_PROJECT -c $XNATPET_CONSTRAINTS"]
+CMD ["sh", "-c", "python /work/xnatpet/xnatpet.py -p $XNATPET_PREFIX -j $XNATPET_PROJECT -c $XNATPET_CONSTRAINTS"]
+
+

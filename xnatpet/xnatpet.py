@@ -273,6 +273,7 @@ class StageXnat(object):
         :param tracer from class param tracers:
         :return dests is list of downloaded rawdata in final destinations:
         """
+        from warnings import warn
         while self.on_schedule() and not self.__resources_available():
             self.__wait()
 
@@ -284,9 +285,12 @@ class StageXnat(object):
         ds = self.stage_dicoms_rawdata(self.session)
         bs = self.stage_bfiles_rawdata(self.session, ds0=ds, tracer=tracer) # all .dcm -> .bf
         dests = []
-        for b in bs:
-            dests.append(self.move_rawdata(self.filename2bf(b), tracer))
-            dests.append(self.move_rawdata(self.filename2dcm(b), tracer)) # .dcm has information needed by move_rawdata
+        try:
+            for b in bs:
+                dests.append(self.move_rawdata(self.filename2bf(b), tracer))
+                dests.append(self.move_rawdata(self.filename2dcm(b), tracer)) # .dcm has information needed by move_rawdata
+        except TypeError as e:
+            warn(e.message)
         return dests
 
     def stage_dicoms_rawdata(self, ses=None, ds0='*.dcm'):
