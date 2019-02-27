@@ -55,9 +55,8 @@ RUN git clone https://github.com/jjleewustledu/pyxnat.git && git clone https://g
 #WORKDIR /work
 #RUN python setup.py install # xnatpet
 # Aternatively, install pyxnat, interfile and xnatpet manually, then issue
-# > docker commit xnatpet-container jjleewustedu/xnatpet-image:manual_install
-# > docker push jjleewustedu/xnatpet-image:manual_install
-# > docker run --rm kaczmarj/neurodocker:0.4.0 generate singularity --base jjleewustledu/xnatpet-image:manual_install --pkg-manager yum
+# > docker commit xnatpet-container jjleewustledu/xnatpet-image:manual_install
+# > docker push jjleewustledu/xnatpet-image:manual_install
 # cluster> singularity pull docker://jjleewustledu/xnatpet-image:manual_install
 
 # setup NRG XNAT Docker
