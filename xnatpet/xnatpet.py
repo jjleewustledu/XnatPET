@@ -113,8 +113,8 @@ class StageXnat(object):
 
     # STAGING #########################################################################
 
-    def stage_constraints(self, constraints=None, modal='pet'):
-        """synonym for stage_project"""
+    def stage_constraints(self, constraints="[('xnat:petSessionData/DATE', '>', '2018-01-01'), 'AND']", modal='pet'):
+        """similar to stage_project but with hard-coded constraints"""
         return self.stage_project(constraints, modal)
 
     def stage_project(self, constraints=None, modal='pet'):
@@ -955,8 +955,8 @@ if __name__ == '__main__':
     p = argparse.ArgumentParser(
         description=
         "xnatpet stages data from XNAT server to local filesystem; \n"
-        "e.g.:  python xnatpet.py -p /path/to/projects -j PROJECT_ID \\\n"
-        "       -c [('xnat:petSessionData/DATE', '>', '2018-01-01'), 'AND']",
+        "e.g.:  python xnatpet.py -p /path/to/projects -j PROJECT_ID \n"
+        "      -c \"[(\'xnat:petSessionData/DATE\', \'>\', \'2018-01-01\'), \'AND\']\" " ,
         formatter_class=RawDescriptionHelpFormatter)
     p.add_argument('-p', '--prefix',
                    metavar='<path>',
@@ -967,11 +967,12 @@ if __name__ == '__main__':
                    required=True,
                    help='project ID as known by XNAT')
     p.add_argument('-c', '--constraints',
-                   metavar="[('<param>', '<logical>', '<value>'), '<LOGICAL>']",
+                   metavar="\"[(\'<param>\', \'<logical>\', \'<value>\'), \'<LOGICAL>\']\"",
                    default=None,
                    required=True,
                    help='must express the constraint API of pyxnat;'
                         'see also https://groups.google.com/forum/#!topic/xnat_discussion/SHWAxHNb570')
+    # ' \"[(\'<param>\', \'<logical>\', \'<value>\'), \'<LOGICAL>\']\" '
     args = p.parse_args()
     r = StageXnat(os.getenv('CNDA_UID'), os.getenv('CNDA_PWD'), prefix=args.prefix, prj=args.proj)
-    r.stage_project(args.constraints)
+    r.stage_constraints(args.constraints)

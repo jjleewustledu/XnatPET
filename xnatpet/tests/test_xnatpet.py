@@ -70,6 +70,10 @@ class TestStaging(unittest.TestCase):
         d = self.sxnat.stage_project(constraints)
         print('\ntest_stage_project\n')
 
+    def test_stage_constraints(self):
+        d = self.sxnat.stage_project()
+        print('\ntest_stage_constraints\n')
+
     def test_constraints_subject(self):
         """https://groups.google.com/forum/#!topic/xnat_discussion/SHWAxHNb570"""
         self.sxnat.tracers = ['Fluorodeoxyglucose']

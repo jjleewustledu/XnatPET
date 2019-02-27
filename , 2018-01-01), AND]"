@@ -1,0 +1,1 @@
+Starting container with commmand: docker run -it --name xnatpet-container -v /home2/jjlee/Docker/XnatPET/:/work -v /scratch/jjlee/Singularity:/scratch/jjlee/Singularity xnatpet-image python /work/xnatpet/xnatpet.py -p /scratch/jjlee/Singularity -j CDNA_00754 -c "[(xnat:petSessionData/DATE,

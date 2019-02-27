@@ -40,11 +40,10 @@ RUN pip --no-cache-dir install --upgrade \
     conda install -y -c conda-forge pydicom
 
 # setup filesystem
-RUN mkdir work && mkdir Singularity
-ENV HOME=/work
+RUN mkdir /work && mkdir -p /scratch/jjlee/Singularity
 ENV SHELL=/bin/bash
 VOLUME /work
-VOLUME /Singularity
+VOLUME /scratch/jjlee/Singularity
 
 # setup pyxnat, interfile packages
 # https://stackoverflow.com/questions/26392227/python-setup-py-install-does-not-work-from-dockerfile-but-i-can-go-in-the-cont
@@ -63,10 +62,10 @@ RUN cd /work/pyxnat/    && python setup.py install && \
 # cluster> singularity pull docker://jjleewustledu/xnatpet-image:manual_install
 
 # setup NRG XNAT Docker
-ENV XNATPET_PREFIX /Singularity
+ENV XNATPET_PREFIX /scratch/jjlee/Singularity
 ENV XNATPET_PROJECT CNDA_00754
 ENV XNATPET_CONSTRAINTS "[('xnat:petSessionData/DATE', '>', '2018-01-01'), 'AND']"
-WORKDIR /Singularity
+WORKDIR /scratch/jjlee/Singularity
 
 CMD ["sh", "-c", "python /work/xnatpet/xnatpet.py -p $XNATPET_PREFIX -j $XNATPET_PROJECT -c $XNATPET_CONSTRAINTS"]
 
