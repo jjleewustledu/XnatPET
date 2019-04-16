@@ -244,7 +244,10 @@ class StageXnat(object):
             self.stage_scan(self.scans()[0]) # KLUDGE:  default scan will be ignored by stage_rawdata
         except (StopIteration, KeyError) as e:
             warn(e.message)
-        self.stage_ct(self.session)
+
+        if self.stage_ct(self.session):
+            return
+
         self.stage_freesurfer()
         self.stage_umaps()
         #for s in self.scans():
@@ -281,7 +284,8 @@ class StageXnat(object):
         if isinstance(obj, pyxnat.core.resources.Experiment):
             if self.session_has_ct(obj):
                 return self.stage_dicoms_scan(obj.scans('2')[0], ses=obj, ddir=self.dir_ct)
-            return
+            else:
+                return False
 
         raise AssertionError("stage_ct could not find a ct sessions for %s" % str(obj))
 
@@ -1068,7 +1072,9 @@ if __name__ == '__main__':
     p = argparse.ArgumentParser(
         description=
         "xnatpet stages data from XNAT server to local filesystem; \n"
-        "e.g.:  python xnatpet.py -c /path/to/cachedir -p PROJECT_ID \n"
+        "e.g.:  python xnatpet.py \n"
+        "       -c /path/to/cachedir \n"
+        "       -p PROJECT_ID \n"
         "       -s SUBJECT_ID \n"
         "       -t \"[(\'xnat:petSessionData/DATE\', \'>\', \'2018-01-01\'), \'AND\']\" " ,
         formatter_class=RawDescriptionHelpFormatter)
@@ -1076,10 +1082,14 @@ if __name__ == '__main__':
                    metavar='<path>',
                    required=True,
                    help='path containing project-level data')
-    p.add_argument('-p', '--proj',
-                   metavar='<ID>',
+    p.add_argument('-p', '--project',
+                   metavar='<PRJ_ID>',
                    required=True,
-                   help='project ID as known by XNAT')
+                   help='project ID recognized by XNAT')
+    p.add_argument('-s', '--subject',
+                   metavar='<SBJ_ID>',
+                   required=True,
+                   help='subject ID recognized by XNAT')
     p.add_argument('-t', '--constraints',
                    metavar="\" [('<param>', '<logical>', '<value>'), '<LOGICAL>'] \"",
                    default=None,
@@ -1088,8 +1098,9 @@ if __name__ == '__main__':
                         'see also https://groups.google.com/forum/#!topic/xnat_discussion/SHWAxHNb570')
     # \"[(\'<param>\', \'<logical>\', \'<value>\'), \'<LOGICAL>\']\"
     args = p.parse_args()
-    r = StageXnat(os.getenv('CNDA_UID'), os.getenv('CNDA_PWD'), cachedir=args.cachedir, prj=args.proj)
+    r = StageXnat(os.getenv('CNDA_UID'), os.getenv('CNDA_PWD'), cachedir=args.cachedir, prj=args.project, sbj=args.subject)
+    if args.subject:
+        r.stage_subject()
     if args.constraints:
         r.stage_project(eval(args.constraints))
-    else:
-        r.stage_constraints()
+
