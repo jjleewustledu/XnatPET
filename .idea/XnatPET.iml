@@ -2,18 +2,12 @@
 <module type="PYTHON_MODULE" version="4">
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$" />
-    <orderEntry type="inheritedJdk" />
+    <orderEntry type="jdk" jdkName="Python 2.7 (xnatpet)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />
     <orderEntry type="library" name="R Skeletons" level="application" />
     <orderEntry type="library" name="R User Library" level="project" />
-    <orderEntry type="module" module-name="pyxnat" />
-    <orderEntry type="module" module-name="interfile" />
-    <orderEntry type="module" module-name="NIPET" />
-    <orderEntry type="module" module-name="NiftyPETy" />
-    <orderEntry type="module" module-name="NiftyPETy" />
   </component>
   <component name="TestRunnerService">
-    <option name="projectConfiguration" value="pytest" />
-    <option name="PROJECT_TEST_RUNNER" value="pytest" />
+    <option name="PROJECT_TEST_RUNNER" value="Unittests" />
   </component>
 </module>

@@ -30,7 +30,7 @@ parser.add_argument("--host", default="https://cnda.wustl.edu", help="CNDA host"
 parser.add_argument("--user", help="CNDA username", required=True)
 parser.add_argument("--password", help="Password", required=True)
 parser.add_argument("--session", help="Session ID", required=True)
-parser.add_argument("--builddir", help="Root output directory for DICOM files", required=True)
+parser.add_argument("--cachedir", help="Root output directory for DICOM files", required=True)
 parser.add_argument("--niftidir", help="Root output directory for NIFTI files", required=True)
 parser.add_argument("--overwrite", help="Overwrite NIFTI files if they exist")
 parser.add_argument("--nii", help="Create .nii file, or .img/.hdr pair")
@@ -111,7 +111,7 @@ for scanid in scanIDList:
     if not os.access(scanDicomDir, os.R_OK):
         print 'Making scan DICOM directory %s.' % scanDicomDir
         os.mkdir(scanDicomDir)
-    # Remove any existing files in the builddir.
+    # Remove any existing files in the cachedir.
     # This is unlikely to happen in any environment other than testing.
     for f in os.listdir(scanDicomDir):
         os.remove(os.path.join(scanDicomDir,f))
@@ -195,7 +195,7 @@ for scanid in scanIDList:
     if not os.access(scanNiftiDir, os.R_OK):
         print 'Creating scan NIFTI directory %s.' % scanNiftiDir
         os.mkdir(scanNiftiDir)
-    # Remove any existing files in the builddir.
+    # Remove any existing files in the cachedir.
     # This is unlikely to happen in any environment other than testing.
     for f in os.listdir(scanNiftiDir):
         os.remove(os.path.join(scanNiftiDir,f))

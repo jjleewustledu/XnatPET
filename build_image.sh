@@ -1,3 +1,3 @@
 #! /bin/bash
 
-docker build -t xnatpet-image -f ./Dockerfile ./
+docker build -t jjleewustledu/xnatpet-image:test -f ./Dockerfile ./

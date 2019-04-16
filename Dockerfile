@@ -16,8 +16,13 @@ RUN yum update -y && \
     pkg-config \
     python2-dev \
     python2-pip \
+    python-httplib2 \
+    python-matplotlib \
+    python-networkx \
+    python-nose \
     python-setuptools \
     python-virtualenv \
+    python-lxml \
     unzip && \
     yum clean all
 
@@ -29,21 +34,19 @@ RUN echo 'export PATH=/opt/conda/bin:$PATH' > /etc/profile.d/conda.sh && \
 
 ENV PATH /opt/conda/bin:$PATH
 
+RUN conda update conda && \
+    conda install -y                coverage==3.7.1 docopt glob2 lxml==3.2.1 matplotlib networkx nose==1.2.1 requests=2.1.0 && \
+    conda install -y -c conda-forge pydicom httplib2 urllib3
+
 RUN pip --no-cache-dir install --upgrade \
-    docopt \
-    httplib2 \
     jsonpath \
-    lxml \
-    nose \
-    pixiedust \
-    requests && \
-    conda install -y -c conda-forge pydicom
+    pixiedust 
 
 # setup filesystem
-RUN mkdir /work && mkdir -p /scratch/jjlee/Singularity
+RUN mkdir /work && mkdir /SubjectsDir
 ENV SHELL=/bin/bash
 VOLUME /work
-VOLUME /scratch/jjlee/Singularity
+VOLUME /SubjectsDir
 
 # setup pyxnat, interfile packages
 # https://stackoverflow.com/questions/26392227/python-setup-py-install-does-not-work-from-dockerfile-but-i-can-go-in-the-cont
@@ -57,16 +60,15 @@ RUN cd /work/pyxnat/    && python setup.py install && \
     cd /work/           && python setup.py install # xnatpet
 # Aternatively, install pyxnat, interfile and xnatpet manually using finish_Docker_installs.sh,
 # then issue:
-# > docker commit xnatpet-container jjleewustledu/xnatpet-image:manual_install
-# > docker push jjleewustledu/xnatpet-image:manual_install
-# cluster> singularity pull docker://jjleewustledu/xnatpet-image:manual_install
+# > docker commit xnatpet-container jjleewustledu/xnatpet-image:test
+# > docker push jjleewustledu/xnatpet-image:test
+# cluster> singularity pull docker://jjleewustledu/xnatpet-image:test
 
-# setup NRG XNAT Docker
-ENV XNATPET_PREFIX /scratch/jjlee/Singularity
-ENV XNATPET_PROJECT CNDA_00754
-ENV XNATPET_CONSTRAINTS ' '
-WORKDIR /scratch/jjlee/Singularity
-
-CMD ["sh", "-c", "python /work/xnatpet/xnatpet.py -p $XNATPET_PREFIX -j $XNATPET_PROJECT -c $XNATPET_CONSTRAINTS"]
-
+# run xnatpet.py; replace "-h" with:
+# "-c", "<cachedir>"
+# "-p", "<project>", 
+# "-s", "<constaints>"
+WORKDIR    /SubjectsDir
+ENTRYPOINT ["python", "/work/xnatpet/xnatpet.py"]
+CMD        ["-h"]
 
