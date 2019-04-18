@@ -3,6 +3,7 @@ import errno
 import pyxnat
 import urllib3
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
+from warnings import warn
 
 
 
@@ -18,7 +19,7 @@ class StageXnat(object):
     session = None
     scan = None
     sleep_duration = 600 # secs
-    tracers = ['Oxygen-water', 'Carbon', 'Oxygen'] # 'Fluorodeoxyglucose'
+    tracers = ['Oxygen-water', 'Carbon', 'Oxygen', 'Fluorodeoxyglucose']
     debug_uri = False
 
     @property
@@ -130,7 +131,6 @@ class StageXnat(object):
         :param tracer from class param tracers:
         :return dests is list of downloaded rawdata in final destinations:
         """
-        from warnings import warn
         from glob2 import glob
 
         if ses:
@@ -206,12 +206,12 @@ class StageXnat(object):
         :param all_scans is bool:
         :return:
         """
-        for s in self.sessions():
-            assert(isinstance(s, pyxnat.core.resources.Experiment))
-            self.stage_session(s)
+        for s in self.project.subjects().get():
+            assert(isinstance(s, str))
+            self.stage_subject(self.project.subject(s))
         return
 
-    def stage_subject(self, sbj=None, ):
+    def stage_subject(self, sbj=None):
         """
         https://groups.google.com/forum/#!topic/xnat_discussion/SHWAxHNb570
         :param sbj is a pyxnat subject:
@@ -233,7 +233,6 @@ class StageXnat(object):
         :param all_scans is bool:
         :return:
         """
-        from warnings import warn
         while self.on_schedule() and not self.__resources_available():
             self.__wait()
 
@@ -247,13 +246,15 @@ class StageXnat(object):
 
         if self.stage_ct(self.session):
             return
-
-        self.stage_freesurfer()
         self.stage_umaps()
-        #for s in self.scans():
-        #    self.stage_scan(s)
-        for t in self.tracers:
-            self.stage_rawdata(self.session, t)
+        self.stage_freesurfer()
+        unzipped = self.pull_rawdata_zip()
+        if unzipped:
+            for t in self.tracers:
+                self.stage_rawdata_zip(self.session, t, unzipped)
+        else:
+            for t in self.tracers:
+                self.stage_rawdata(self.session, t)
         return
 
     def stage_scan(self, scn=None, ses=None, sdir=None):
@@ -297,7 +298,6 @@ class StageXnat(object):
         :return upaths is a list of umap path names:
         """
         from pydicom.errors import InvalidDicomError
-        from warnings import warn
         if not ses:
             assert(isinstance(self.session, pyxnat.core.resources.Experiment))
             ses = self.session
@@ -311,7 +311,7 @@ class StageXnat(object):
                     self.__download_scan(ds, self.__get_dicomdict, sessid = ses.id(), scanid=s.id())
                     upaths.append(
                         self.move_scan(self.dir_scan, self.dir_umaps, scaninfo=dinfo))
-            except (IOError, InvalidDicomError, TypeError) as e:
+            except (IOError, InvalidDicomError, TypeError, IndexError) as e:
                 warn(e.message)
         return upaths
 
@@ -357,10 +357,6 @@ class StageXnat(object):
         :param tracer from class param tracers:
         :return dests is list of downloaded rawdata in final destinations:
         """
-        from warnings import warn
-        while self.on_schedule() and not self.__resources_available():
-            self.__wait()
-
         if ses:
             assert(isinstance(ses, pyxnat.core.resources.Experiment))
             self.session = ses
@@ -370,70 +366,80 @@ class StageXnat(object):
         dests = []
         try:
             ds = self.stage_dicoms_rawdata(self.session)
-            bs = self.stage_bfiles_rawdata(self.session, ds0=ds, tracer=tracer) # all .dcm -> .bf
+            bs = self.stage_bfiles_rawdata(self.session, dcms0=ds, tracer=tracer) # all .dcm -> .bf
             for b in bs:
                 dests.append(self.move_rawdata(self.filename2bf(b), tracer))
-                dests.append(self.move_rawdata(self.filename2dcm(b), tracer)) # .dcm has information needed by move_rawdata
+                dests.append(self.move_rawdata(self.filename2dcm(b), tracer))
+                # .dcm has information needed by move_rawdata
         except (TypeError, KeyError) as e:
             warn(e.message)
         return dests
 
-    def stage_dicoms_rawdata(self, ses=None, ds0='*.dcm'):
+    def stage_dicoms_rawdata(self, ses=None, dcms0='*.dcm', do_pull=True):
         """
         downloads all .dcm files from session resources RawData to class param dir_rawdata;
         these may be parsed in further actions
         :param ses is a pyxnat experiment:
-        :param ds0 is a string specifier for requests from ses:
-        :return ds is the list of downloaded DICOM filenames:
+        :param dcms0 is a string specifier for requests from ses:
+        :return dcms is the list of downloaded DICOM filenames:
         """
         if ses:
             assert(isinstance(ses, pyxnat.core.resources.Experiment))
             self.session = ses
-        #self.session{.resources()}
-        #self.xnat.select('/projects/CCIR_00754/experiments/CNDA_E248568/resources/*.dcm').files() is nontrivial
-        #self.xnat.select('/projects/CCIR_00754/experiments/CNDA_E248568'){.resources().files(), .files()} => Timeout waiting for response on 113
-        #self.xnat.select('/projects/CCIR_00754/experiments/CNDA_E248568').get() => Timeout waiting for response on 113
-        #self.xnat.select.projects('CCIR_00754').get() = Timeout
-        if '*' in ds0:
-            ds = self.session.resources().files(ds0).get()
-            if isinstance(ds, str):
-                ds = [ds]
-        else:
-            ds = [ds0]
-        self.__download_files(ds, self.__get_rawdatadict, fdir=self.dir_rawdata)
-        return ds
+        if not dcms0:
+            return False
+        try:
+            dcms = self.list_rawdata(dcms0)
+            if do_pull:
+                self.pull_rawdata_files(dcms, self.dir_rawdata)
+            return dcms
+        except AttributeError as e:
+            warn(e.message)
+            return None
 
-    def stage_bfiles_rawdata(self, ses=None, ds0='*.dcm', tracer='Fluorodeoxyglucose'):
+    def stage_bfiles_rawdata(self, ses=None, dcms0='*.dcm', tracer='Fluorodeoxyglucose', do_pull=True):
         """
         downloads .bf files from the session resources RawData to class param dir_rawdata
         :param ses is a pxnat session experiment:
-        :param ds0 is a string specifier for requests from sess or a list of specifiers or a list of files:
+        :param dcms0 is a string specifier for requests from sess or a list of specifiers or a list of files:
         :param tracer is from class param tracers:
         :return bs is the list of downloaded .bf files:
         """
         if ses:
             assert(isinstance(ses, pyxnat.core.resources.Experiment))
             self.session = ses
-        if not ds0:
+        if not dcms0:
             return False
-        ds = []
-        if isinstance(ds0, str):
-            #ds = self.session.resources().files(ds0).get() # expands specifier ds0
-            ds = [os.path.join(self.dir_rawdata, ds0)]
-        if isinstance(ds0, list):
-            for f in ds0:
-                ds.append(self.session.resources().files(f).get()) # expands f as needed
-            ds = [item for sublist in ds for item in sublist] # flattens list of lists
-            # From Alex Martelli
-            # https://stackoverflow.com/questions/952914/how-to-make-a-flat-list-out-of-list-of-lists?page=1&tab=votes#tab-top
+        try:
+            dcms = self.list_rawdata(dcms0)
+            bs = self.__select_tracer(dcms, tracer)
+            bs = self.__select_bfiles(bs)
+            if do_pull:
+                self.pull_rawdata_files(bs, self.dir_rawdata)
+            return self.__list_basename(bs)
+        except AttributeError as e:
+            warn(e.message)
+            return None
 
-        bs = self.__select_tracer(ds, tracer)
-        bs = self.__select_bfiles(bs)
-        self.__download_files(bs, self.__get_rawdatadict, fdir=self.dir_rawdata)
-        bs2 = []
-        for ibs in bs:
-            bs2.append(os.path.basename(ibs))
-        return bs2
+    def stage_rawdata_zip(self, ses=None, tracer='Fluorodeoxyglucose', unzipped=None):
+        if ses:
+            assert(isinstance(ses, pyxnat.core.resources.Experiment))
+            self.session = ses
+        if not os.path.exists(self.dir_rawdata):
+            os.makedirs(self.dir_rawdata)
+        os.chdir(self.dir_rawdata)
+        if not unzipped:
+            return None
+        dests = []
+        try:
+            bs = self.stage_bfiles_rawdata(self.session, dcms0=unzipped, tracer=tracer, do_pull=False)
+            for b in bs:
+                dests.append(self.move_rawdata(self.filename2bf(b), tracer))
+                dests.append(self.move_rawdata(self.filename2dcm(b), tracer))
+                # .dcm has information needed by move_rawdata
+        except (IOError, TypeError, KeyError) as e:
+            warn(e.message)
+        return dests
 
     def stage_freesurfer(self):
         """
@@ -441,15 +447,15 @@ class StageXnat(object):
         :return __download_assessors():
         """
         from glob2 import glob
-        from warnings import warn
         fs = glob(os.path.join(self.dir_session, self.str_session + '_freesurfer_*'))
         if fs and os.path.isdir(fs[0]):
             return fs[0]
         try:
             mri_symlink = self.__download_assessors()
+            return mri_symlink
         except AssertionError as e:
             warn(e.message)
-        return mri_symlink
+            return None
 
 
 
@@ -541,6 +547,24 @@ class StageXnat(object):
         d = self.__get_dicom(dcm)
         return d.SeriesDescription == u'Head_MRAC_Brain_HiRes_in_UMAP'
 
+    def list_rawdata(self, obj):
+        lst = []
+        if isinstance(obj, str):
+            if '*' in obj:
+                lst = self.session.resource('RawData').files(obj).get()
+                if isinstance(lst, str):
+                    lst = [lst]
+            else:
+                lst = [os.path.join(self.dir_rawdata, obj)]
+        if isinstance(obj, list):
+            for o in obj:
+                lst.append(self.session.resource('RawData').files(o).get()) # expands d as needed
+            lst = [item for sublist in lst for item in sublist]
+            # flattens list of lists
+            # From Alex Martelli
+            # https://stackoverflow.com/questions/952914/how-to-make-a-flat-list-out-of-list-of-lists?page=1&tab=votes#tab-top
+        return lst
+
     def move_rawdata(self, rfile0, tracer):
         """
         moves rawdata original file, .dcm or .bf, to file in new target directory
@@ -579,6 +603,32 @@ class StageXnat(object):
     def on_schedule(self):
         return True
 
+    def pull_rawdata_files(self, fs, dest):
+        resource = self.session.resource('RawData')
+        for f in fs:
+            resource.file(f).get(os.path.join(dest, f))
+
+    def pull_rawdata_zip(self):
+        """
+        pulls self.session.resource('RawData').files('*.zip')
+        :return dcms is a list of *.dcm:
+        """
+        from zipfile import ZipFile
+        from os.path import exists
+        from os.path import join
+        dcms = []
+        resource = self.session.resource('RawData')
+        zs = resource.files('*.zip').get()
+        for z in zs:
+            if not exists(join(self.dir_rawdata, z)):
+                resource.file(z).get(join(self.dir_rawdata, z))
+            zf = ZipFile(z, 'r')
+            zf.extractall(self.dir_rawdata)
+            zf.close()
+            os.remove(z)
+            dcms.append(self.walk_and_move(z, self.dir_rawdata))
+        return dcms
+
     def rawdata_destination(self, b, tracer):
         """
         determines canonical directory name by reading DICOM for rawdata
@@ -615,6 +665,24 @@ class StageXnat(object):
         d = dcmread(self.filename2dcm(b))
         return 'DT' + d.StudyDate + d.SeriesTime # str DTYYYYMMDDhhmmss.xxxxxx
 
+    def walk_and_move(self, z, dest):
+        """
+        https://stackoverflow.com/questions/25675352/how-to-check-to-see-if-a-folder-contains-files-using-python-3
+        :param z is zipfile:
+        :param dest is the destination of extraction:
+        :return dcms is list of *.dcm:
+        """
+        zfolder = os.path.splitext(z)
+        dcms = []
+        for dirpath, dirnames, files in os.walk(zfolder[0]):
+            if files:
+                for f in files:
+                    os.rename(f, os.path.join(dest, f))
+                for f in files:
+                    if '.dcm' == os.path.splitext(f)[1]:
+                        dcms.append(f)
+        return dcms
+
 
 
 
@@ -641,6 +709,8 @@ class StageXnat(object):
             os.chdir(self.dir_session)
             with open(zip, 'wb') as f:
                 r = self.__get_url(uri, headers=cookie, verify=False, stream=True)
+                if not r:
+                    return None
                 copyfileobj(r.raw, f)
             z = ZipFile(zip, 'r')
             z.extractall(self.dir_session)
@@ -665,8 +735,6 @@ class StageXnat(object):
         :param fdir is a filesystem path:
         :return dict from get_datadict:
         """
-        from warnings import warn
-
         cookie = self.__jsession_request()
         if not sessid:
             sessid = self.str_session
@@ -704,8 +772,6 @@ class StageXnat(object):
         :param fdir is a filesystem path:
         :return dict from get_datadict:
         """
-        from warnings import warn
-
         cookie = self.__jsession_request()
         if not sessid:
             sessid = self.str_session
@@ -749,7 +815,6 @@ class StageXnat(object):
         Is the legacy implementation from John Flavin's dcm2ni_wholeSession.py
         """
         import pydicom
-        from warnings import warn
         cookie = self.__jsession_request()
         scanid_list = self.__get_scanid_list(cookie)
 
@@ -993,6 +1058,12 @@ class StageXnat(object):
         requests.delete(self.host + "/data/JSESSION", headers=cookie, verify=False)
         return
 
+    def __list_basename(self, lst):
+        lst1 = []
+        for i in lst:
+            lst1.append(os.path.basename(i))
+        return lst1
+
     def __resources_available(self):
         return True
 
@@ -1036,7 +1107,7 @@ class StageXnat(object):
         time.sleep(self.sleep_duration)
         return
 
-    def __init__(self, user, password, cachedir="/scratch/jjlee/Singularity", prj="CCIR_00754", sbj="HYGLY50", ses="CNDA_E248568", scn=82):
+    def __init__(self, user, password, cachedir="/scratch/jjlee/Singularity", prj="CCIR_00754", sbj=None, ses=None, scn=None):
         """
         :param user:
         :param password:
@@ -1055,12 +1126,25 @@ class StageXnat(object):
         assert(isinstance(self.xnat, pyxnat.core.interfaces.Interface))
         self.project  = self.xnat.select.project(prj)
         assert(isinstance(self.project, pyxnat.core.resources.Project))
-        self.subject  = self.project.subject(sbj)
-        assert(isinstance(self.subject, pyxnat.core.resources.Subject))
-        self.session  = self.subject.experiment(ses)
-        assert(isinstance(self.session, pyxnat.core.resources.Experiment))
-        self.scan     = self.session.scan(str(scn))
-        assert(isinstance(self.scan, pyxnat.core.resources.Scan))
+        if sbj:
+            self.subject = self.project.subject(sbj)
+            assert(isinstance(self.subject, pyxnat.core.resources.Subject))
+        else:
+            self.subject = self.project.subjects()
+            assert(isinstance(self.subject, pyxnat.resources.Subjects))
+        if ses:
+            self.session = self.subject.experiment(ses)
+            assert(isinstance(self.session, pyxnat.core.resources.Experiment))
+        else:
+            self.session = self.subject.experiments()
+            assert(isinstance(self.session, pyxnat.core.resources.Experiments))
+        if scn:
+            self.scan = self.session.scan(str(scn))
+            assert(isinstance(self.scan, pyxnat.core.resources.Scan))
+        else:
+            self.scan = self.session.scans()
+            assert(isinstance(self.scan, pyxnat.core.resources.Scans))
+
         self.scan_dicom = self.scan.resource('DICOM')
         self.rawdata  = self.session.resource('RawData')
 
@@ -1088,7 +1172,8 @@ if __name__ == '__main__':
                    help='project ID recognized by XNAT')
     p.add_argument('-s', '--subject',
                    metavar='<SBJ_ID>',
-                   required=True,
+                   default=None,
+                   required=False,
                    help='subject ID recognized by XNAT')
     p.add_argument('-t', '--constraints',
                    metavar="\" [('<param>', '<logical>', '<value>'), '<LOGICAL>'] \"",
@@ -1103,4 +1188,5 @@ if __name__ == '__main__':
         r.stage_subject()
     if args.constraints:
         r.stage_project(eval(args.constraints))
+    r.stage_project()
 

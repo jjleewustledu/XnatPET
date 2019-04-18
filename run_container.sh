@@ -17,6 +17,6 @@ if [[ $# -eq 2 ]] ; then
     CMD=' '
 fi
 
-CONTAINER="docker run -it --name $CONTAINER_NAME -v ${HOME_DOCKER}/XnatPET/:/work -v ${SINGULARITY_HOME}/:/SubjectsDir $IMAGE_NAME $CMD"
+CONTAINER="docker run -it --rm --name $CONTAINER_NAME -v ${SINGULARITY_HOME}/:/SubjectsDir $IMAGE_NAME $CMD"
 echo 'Starting container with commmand: '$CONTAINER
 eval $CONTAINER

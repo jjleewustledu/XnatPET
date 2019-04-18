@@ -35,8 +35,9 @@ RUN echo 'export PATH=/opt/conda/bin:$PATH' > /etc/profile.d/conda.sh && \
 ENV PATH /opt/conda/bin:$PATH
 
 RUN conda update conda && \
-    conda install -y                coverage==3.7.1 docopt glob2 lxml==3.2.1 matplotlib networkx nose==1.2.1 requests=2.1.0 && \
+    conda install -y                coverage==3.7.1 docopt glob2 lxml==3.2.1 matplotlib networkx nose==1.2.1 requests && \
     conda install -y -c conda-forge pydicom httplib2 urllib3
+    # requests=2.1.0 was working
 
 RUN pip --no-cache-dir install --upgrade \
     jsonpath \
