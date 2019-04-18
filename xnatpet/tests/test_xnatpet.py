@@ -146,12 +146,16 @@ class TestStaging(unittest.TestCase):
         print('\ntest_stage_project\n')
 
     def test_stage_subject(self):
-        d = self.sxnat3.stage_subject()
+        d = self.sxnat5.stage_subject()
         print('\ntest_stage_subject\n')
 
-    def test_stage_session(self):
+    def test_stage_session3(self):
         d = self.sxnat3.stage_session()
-        print('\ntest_stage_session\n')
+        print('\ntest_stage_session3\n')
+
+    def test_stage_session5(self):
+        d = self.sxnat5.stage_session()
+        print('\ntest_stage_session5\n')
 
     def test_stage_scan(self):
         d = self.sxnat.stage_scan(self.sxnat.scan)

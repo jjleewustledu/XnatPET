@@ -557,9 +557,10 @@ class StageXnat(object):
             else:
                 lst = [os.path.join(self.dir_rawdata, obj)]
         if isinstance(obj, list):
-            for o in obj:
-                lst.append(self.session.resource('RawData').files(o).get()) # expands d as needed
-            lst = [item for sublist in lst for item in sublist]
+            lst = obj
+            #for o in obj:
+            #    lst.append(self.session.resource('RawData').files(o).get()) # expands d as needed
+            #lst = [item for sublist in lst for item in sublist]
             # flattens list of lists
             # From Alex Martelli
             # https://stackoverflow.com/questions/952914/how-to-make-a-flat-list-out-of-list-of-lists?page=1&tab=votes#tab-top
@@ -620,13 +621,14 @@ class StageXnat(object):
         resource = self.session.resource('RawData')
         zs = resource.files('*.zip').get()
         for z in zs:
-            if not exists(join(self.dir_rawdata, z)):
-                resource.file(z).get(join(self.dir_rawdata, z))
-            zf = ZipFile(z, 'r')
+            z1 = join(self.dir_rawdata, z)
+            if not exists(z1):
+                resource.file(z).get(z1)
+            zf = ZipFile(z1, 'r')
             zf.extractall(self.dir_rawdata)
             zf.close()
-            os.remove(z)
-            dcms.append(self.walk_and_move(z, self.dir_rawdata))
+            os.remove(z1)
+            dcms.append(self.walk_and_move(z1, self.dir_rawdata))
         return dcms
 
     def rawdata_destination(self, b, tracer):
@@ -674,12 +676,12 @@ class StageXnat(object):
         """
         zfolder = os.path.splitext(z)
         dcms = []
-        for dirpath, dirnames, files in os.walk(zfolder[0]):
+        for dirpath, dirnames, files in os.walk(os.path.dirname(zfolder[0])):
             if files:
                 for f in files:
-                    os.rename(f, os.path.join(dest, f))
+                    os.rename(os.path.join(dirpath, f), os.path.join(dest, f))
                 for f in files:
-                    if '.dcm' == os.path.splitext(f)[1]:
+                    if '.dcm' in os.path.splitext(f):
                         dcms.append(f)
         return dcms
 
