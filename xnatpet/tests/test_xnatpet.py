@@ -154,6 +154,7 @@ class TestStaging(unittest.TestCase):
         print('\ntest_stage_session3\n')
 
     def test_stage_session5(self):
+        self.sxnat5.DO_NOT_pull_rawdata_zip = True
         d = self.sxnat5.stage_session()
         print('\ntest_stage_session5\n')
 

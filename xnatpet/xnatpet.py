@@ -21,6 +21,7 @@ class StageXnat(object):
     sleep_duration = 600 # secs
     tracers = ['Oxygen-water', 'Carbon', 'Oxygen', 'Fluorodeoxyglucose']
     debug_uri = False
+    DO_NOT_pull_rawdata_zip = False
 
     @property
     def str_project(self):
@@ -174,8 +175,8 @@ class StageXnat(object):
             # From Alex Martelli
             # https://stackoverflow.com/questions/952914/how-to-make-a-flat-list-out-of-list-of-lists?page=1&tab=votes#tab-top
 
-        bs = self.__select_tracer(ds, tracer)
-        bs = self.__select_bfiles(bs)
+        bs = self.select_tracer(ds, tracer)
+        bs = self.select_bfiles(bs)
         #self.__download_files(bs, self.__get_rawdatadict, fdir=self.dir_rawdata)
         bs2 = []
         for ibs in bs:
@@ -346,6 +347,8 @@ class StageXnat(object):
             ses = self.session
         if not ddir:
             ddir = self.dir_scan
+        if os.path.exists(ddir):
+            return None
         ds = self.scan.resources().files(fs).get()
         return self.__download_scan(ds, self.__get_dicomdict, sessid=ses.id(), scanid=self.scan.id(), fdir=ddir)
 
@@ -412,8 +415,8 @@ class StageXnat(object):
             return False
         try:
             dcms = self.list_rawdata(dcms0)
-            bs = self.__select_tracer(dcms, tracer)
-            bs = self.__select_bfiles(bs)
+            bs = self.select_tracer(dcms, tracer)
+            bs = self.select_bfiles(bs)
             if do_pull:
                 self.pull_rawdata_files(bs, self.dir_rawdata)
             return self.__list_basename(bs)
@@ -557,6 +560,8 @@ class StageXnat(object):
             else:
                 lst = [os.path.join(self.dir_rawdata, obj)]
         if isinstance(obj, list):
+            if isinstance(obj[0], list):
+                obj = obj[0]
             lst = obj
             #for o in obj:
             #    lst.append(self.session.resource('RawData').files(o).get()) # expands d as needed
@@ -617,6 +622,10 @@ class StageXnat(object):
         from zipfile import ZipFile
         from os.path import exists
         from os.path import join
+
+        if self.DO_NOT_pull_rawdata_zip:
+            return os.listdir(self.dir_rawdata)
+
         dcms = []
         resource = self.session.resource('RawData')
         zs = resource.files('*.zip').get()
@@ -642,6 +651,31 @@ class StageXnat(object):
             self.dir_session,
             self.tracer_label(tracer, b) + '_' + self.visit_label(b) + '-Converted-NAC')
         return dest
+
+    def select_bfiles(self, bfs):
+        """
+        examines rawdata dcms and selects bf for norm and listmode data
+        :param bfs:
+        :return bf:
+        """
+        bf = []
+        for b in bfs:
+            if self.is_norm(self.filename2dcm(b)) or self.is_listmode(self.filename2dcm(b)):
+                bf.append(b)
+        return bf
+
+    def select_tracer(self, dcms, tracer='Fluorodeoxyglucose'):
+        """
+        examines rawdata dcms for given tracer and selects bf for norm and listmode data
+        :param dcms:
+        :param tracer in ['Fluorodeoxyglucose', 'Oxygen-water', 'Oxygen', 'Carbon']:
+        :return bf:
+        """
+        bf = []
+        for d in dcms:
+            if '.dcm' in d and self.is_tracer(d, tracer):
+                bf.append(self.filename2bf(d))
+        return bf
 
     def session_has_ct(self, ses):
         if not ses:
@@ -1068,31 +1102,6 @@ class StageXnat(object):
 
     def __resources_available(self):
         return True
-
-    def __select_bfiles(self, bfs):
-        """
-        examines rawdata dcms and selects bf for norm and listmode data
-        :param bfs:
-        :return bf:
-        """
-        bf = []
-        for b in bfs:
-            if self.is_norm(self.filename2dcm(b)) or self.is_listmode(self.filename2dcm(b)):
-                bf.append(b)
-        return bf
-
-    def __select_tracer(self, dcms, tracer='Fluorodeoxyglucose'):
-        """
-        examines rawdata dcms for given tracer and selects bf for norm and listmode data
-        :param dcms:
-        :param tracer in ['Fluorodeoxyglucose', 'Oxygen-water', 'Oxygen', 'Carbon']:
-        :return bf:
-        """
-        bf = []
-        for d in dcms:
-            if self.is_tracer(d, tracer):
-                bf.append(self.filename2bf(d))
-        return bf
 
     def __symlink(self, name, path_dict):
         from shutil import copy as fileCopy
