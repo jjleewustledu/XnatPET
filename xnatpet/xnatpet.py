@@ -207,9 +207,12 @@ class StageXnat(object):
         :param all_scans is bool:
         :return:
         """
-        for s in self.project.subjects().get():
-            assert(isinstance(s, str))
-            self.stage_subject(self.project.subject(s))
+        for s in self.project.subjects():
+            assert(isinstance(s, pyxnat.core.resources.Subject))
+            try:
+                self.stage_subject(s)
+            except Exception as e:
+                warn(e.message)
         return
 
     def stage_subject(self, sbj=None):
@@ -224,7 +227,10 @@ class StageXnat(object):
             self.subject = sbj
         for s in self.subject.experiments():
             assert(isinstance(s, pyxnat.core.resources.Experiment))
-            self.stage_session(s)
+            try:
+                self.stage_session(s)
+            except Exception as e: # TO DO:  find specific exception of sufficient scope
+                warn(e.message)
         return
 
     def stage_session(self, ses=None):

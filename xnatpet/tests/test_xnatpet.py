@@ -92,7 +92,7 @@ class TestPrimitives(unittest.TestCase):
 class TestStaging(unittest.TestCase):
 
     def setUp(self):
-        self._cachedir = '/scratch2/jjlee/Singularity'
+        self._cachedir = '/scratch/jjlee/Singularity'
         self.sxnat = StageXnat(
             user=os.getenv('CNDA_UID'), password=os.getenv('CNDA_PWD'),
             cachedir=self._cachedir,
