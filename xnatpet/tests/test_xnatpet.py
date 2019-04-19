@@ -113,11 +113,16 @@ class TestStaging(unittest.TestCase):
             user=os.getenv('CNDA_UID'), password=os.getenv('CNDA_PWD'),
             cachedir=self._cachedir,
             prj='CCIR_00754', sbj='NP995_22', ses='CNDA_E158842') # Zip archive
+        self.sxnat6 = StageXnat(
+            user=os.getenv('CNDA_UID'), password=os.getenv('CNDA_PWD'),
+            cachedir=self._cachedir,
+            prj='CCIR_00754', sbj='NP995_22', ses='CNDA_E160652') # Zip archive
         self.sxnat.debug_uri = True
         self.sxnat2.debug_uri = True
         self.sxnat3.debug_uri = True
         self.sxnat4.debug_uri = True
         self.sxnat5.debug_uri = True
+        self.sxnat6.debug_uri = True
 
     def test_stage_constraints(self):
         #constraints = [('xnat:petSessionData/DATE', '<', '2018-01-01'), 'AND']
@@ -143,6 +148,7 @@ class TestStaging(unittest.TestCase):
 
     def test_stage_project(self):
         d = self.sxnat3.stage_project()
+        d = self.sxnat4.stage_project()
         print('\ntest_stage_project\n')
 
     def test_stage_subject(self):
@@ -154,9 +160,14 @@ class TestStaging(unittest.TestCase):
         print('\ntest_stage_session3\n')
 
     def test_stage_session5(self):
-        self.sxnat5.DO_NOT_pull_rawdata_zip = True
+        self.sxnat5.DO_pull_rawdata_zip = False
         d = self.sxnat5.stage_session()
         print('\ntest_stage_session5\n')
+
+    def test_stage_session6(self):
+        self.sxnat6.DO_pull_rawdata_zip = False
+        d = self.sxnat6.stage_session()
+        print('\ntest_stage_session6\n')
 
     def test_stage_scan(self):
         d = self.sxnat.stage_scan(self.sxnat.scan)

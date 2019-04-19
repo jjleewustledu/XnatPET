@@ -21,7 +21,7 @@ class StageXnat(object):
     sleep_duration = 600 # secs
     tracers = ['Oxygen-water', 'Carbon', 'Oxygen', 'Fluorodeoxyglucose']
     debug_uri = False
-    DO_NOT_pull_rawdata_zip = False
+    DO_pull_rawdata_zip = True
 
     @property
     def str_project(self):
@@ -249,10 +249,11 @@ class StageXnat(object):
             return
         self.stage_umaps()
         self.stage_freesurfer()
-        unzipped = self.pull_rawdata_zip()
+        unzipped = self.pull_rawdata_zip(self.DO_pull_rawdata_zip)
         if unzipped:
             for t in self.tracers:
                 self.stage_rawdata_zip(self.session, t, unzipped)
+                unzipped = self.pull_rawdata_zip(False)
         else:
             for t in self.tracers:
                 self.stage_rawdata(self.session, t)
@@ -614,18 +615,17 @@ class StageXnat(object):
         for f in fs:
             resource.file(f).get(os.path.join(dest, f))
 
-    def pull_rawdata_zip(self):
+    def pull_rawdata_zip(self, do_pull=True):
         """
         pulls self.session.resource('RawData').files('*.zip')
+        :param do_pull from pyxnat Interface:
         :return dcms is a list of *.dcm:
         """
         from zipfile import ZipFile
         from os.path import exists
         from os.path import join
-
-        if self.DO_NOT_pull_rawdata_zip:
+        if not do_pull:
             return os.listdir(self.dir_rawdata)
-
         dcms = []
         resource = self.session.resource('RawData')
         zs = resource.files('*.zip').get()
