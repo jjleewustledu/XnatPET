@@ -213,6 +213,7 @@ class StageXnat(object):
                 self.stage_subject(s)
             except Exception as e:
                 warn(e.message)
+        self.xnat.disconnect()
         return
 
     def stage_subject(self, sbj=None):
