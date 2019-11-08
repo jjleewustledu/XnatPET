@@ -9,7 +9,7 @@ from warnings import warn
 
 class StageXnat(object):
     """Uses pyxnat or requests packages to interact with an XNAT REST API to download data from
-       projects, subjects, sessions/experiments, scans, rawdata-resources and freesurfer-assessors."""
+       projects, subjects, experiments_list/experiments_list, scans, rawdata-resources and freesurfer-assessors."""
 
     __author__ = "John J. Lee"
     __copyright__ = "Copyright 2019"
@@ -21,7 +21,9 @@ class StageXnat(object):
     sleep_duration = 600 # secs
     tracers = ['Oxygen-water', 'Carbon', 'Oxygen', 'Fluorodeoxyglucose']
     debug_uri = False
-    DO_pull_rawdata_zip = True
+    DO_pull_rawdata = True
+    DO_stage_umaps = True
+    DO_stage_freesurfer = True
 
     @property
     def str_project(self):
@@ -81,6 +83,9 @@ class StageXnat(object):
 
     # PRIMITIVES #########################################################################
 
+    def disconnect(self):
+        self.xnat.disconnect()
+
     def projects(self, interface=None, glob='*'):
         """
         :param interface:
@@ -103,12 +108,12 @@ class StageXnat(object):
     def sessions(self, prj=None, glob='*'):
         """
         :param prj:
-        :return all pyxnat.experiments for project:
+        :return all pyxnat.experiments_list for project:
         """
         if prj:
             assert(isinstance(prj, pyxnat.core.resources.Project))
             self.project = prj
-        return self.project.experiments(glob)
+        return self.project.experiments_list(glob)
 
     def scans(self, ses=None, glob='*'):
         """
@@ -213,6 +218,7 @@ class StageXnat(object):
                 self.stage_subject(s)
             except Exception as e:
                 warn(e.message)
+        self.xnat.disconnect()
         return
 
     def stage_subject(self, sbj=None):
@@ -225,7 +231,8 @@ class StageXnat(object):
         if sbj:
             assert(isinstance(sbj, pyxnat.core.resources.Subject))
             self.subject = sbj
-        for s in self.subject.experiments():
+        # subject.experiments_list() invalid
+        for s in self.subject.experiments_list():
             assert(isinstance(s, pyxnat.core.resources.Experiment))
             try:
                 self.stage_session(s)
@@ -253,9 +260,11 @@ class StageXnat(object):
 
         if self.stage_ct(self.session):
             return
-        self.stage_umaps()
-        self.stage_freesurfer()
-        unzipped = self.pull_rawdata_zip(self.DO_pull_rawdata_zip)
+        if self.DO_stage_umaps:
+            self.stage_umaps()
+        if self.DO_stage_freesurfer:
+            self.stage_freesurfer()
+        unzipped = self.pull_rawdata_zip(True)
         if unzipped:
             for t in self.tracers:
                 self.stage_rawdata_zip(self.session, t, unzipped)
@@ -264,6 +273,7 @@ class StageXnat(object):
             for t in self.tracers:
                 self.stage_rawdata(self.session, t)
         return
+
 
     def stage_scan(self, scn=None, ses=None, sdir=None):
         if scn:
@@ -282,7 +292,7 @@ class StageXnat(object):
             raise NotImplementedError
 
             addict = None
-            for e in self.sessions(obj):
+            for e in self.experiments_list(obj):
                 assert(isinstance(e, pyxnat.core.resources.Experiment))
                 ddict = self.stage_ct(e)
                 if ddict:
@@ -296,7 +306,7 @@ class StageXnat(object):
             else:
                 return False
 
-        raise AssertionError("stage_ct could not find a ct sessions for %s" % str(obj))
+        raise AssertionError("stage_ct could not find a ct experiments_list for %s" % str(obj))
 
     def stage_umaps(self, ses=None, umap_desc=u'Head_MRAC_Brain_HiRes_in_UMAP'):
         """
@@ -306,20 +316,32 @@ class StageXnat(object):
         :return upaths is a list of umap path names:
         """
         from pydicom.errors import InvalidDicomError
+        from pyxnat.core.errors import DataError
         if not ses:
             assert(isinstance(self.session, pyxnat.core.resources.Experiment))
             ses = self.session
+        else:
+            assert(isinstance(ses, pyxnat.core.resources.Experiment))
+            self.session = ses
+        if os.path.exists(self.dir_umaps):
+            return None
         upaths = []
         scans = ses.scans('*')
         for s in scans:
             try:
                 dinfo = self.stage_dicom0_scan(s)
-                if umap_desc == dinfo.SeriesDescription:
-                    ds = s.resources().files('*.dcm').get()
-                    self.__download_scan(ds, self.__get_dicomdict, sessid = ses.id(), scanid=s.id())
+                if dinfo and umap_desc in dinfo.SeriesDescription:
+                    ds = s.resource('DICOM').files().get()
+                    #try:
+                    #    self.__download_scan(ds, self.__get_dicomdict, sessid = ses.id(), scanid=s.id())
+                    #except IOError as e:
+                    #    warn(e.message)
+                    for d in ds:
+                        s.resource('DICOM').file(d).get(os.path.join(self.dir_scan, d))
+                        #self.session.resource('DICOM').file(d).get(self.dir_scan)
                     upaths.append(
                         self.move_scan(self.dir_scan, self.dir_umaps, scaninfo=dinfo))
-            except (IOError, InvalidDicomError, TypeError, IndexError) as e:
+            except (IOError, InvalidDicomError, TypeError, IndexError, DataError) as e:
                 warn(e.message)
         return upaths
 
@@ -332,11 +354,18 @@ class StageXnat(object):
         """
         import pydicom
         self.scan = scn
-        ds = scn.resources().files(fs).get()
+        ds = self.scan.resources().files(fs).get()
         ds0 = os.path.join(self.dir_scan, ds[0])
-        if not os.path.exists(ds0):
-            self.__download_files([ds[0]], self.__get_dicomdict, scanid=scn.id())
-        return pydicom.dcmread(os.path.join(self.dir_scan, ds[0]))
+        if not os.path.exists(self.dir_scan) and not os.path.exists(ds0):
+            try:
+                self.__download_files([ds[0]], self.__get_dicomdict, scanid=self.scan.id())
+            except KeyError:
+                try:
+                    self.scan.resource('DICOM').file(ds[0]).get(ds0)
+                except pyxnat.core.errors.DataError as e:
+                    warn(e.message)
+                    return None
+        return pydicom.dcmread(ds0)
 
     def stage_dicoms_scan(self, scn=None, ses=None, ddir=None, fs='*.dcm'):
         """
@@ -375,13 +404,51 @@ class StageXnat(object):
         os.chdir(self.dir_rawdata)
         dests = []
         try:
-            ds = self.stage_dicoms_rawdata(self.session)
-            bs = self.stage_bfiles_rawdata(self.session, dcms0=ds, tracer=tracer) # all .dcm -> .bf
+            ds = self.stage_dicoms_rawdata(self.session, do_pull=self.DO_pull_rawdata)
+            bs = self.stage_bfiles_rawdata(self.session, dcms0=ds, tracer=tracer, do_pull=self.DO_pull_rawdata) # all .dcm -> .bf
             for b in bs:
                 dests.append(self.move_rawdata(self.filename2bf(b), tracer))
                 dests.append(self.move_rawdata(self.filename2dcm(b), tracer))
                 # .dcm has information needed by move_rawdata
         except (TypeError, KeyError) as e:
+            warn(e.message)
+        return dests
+
+    def stage_rawdata_zip(self, ses=None, tracer='Fluorodeoxyglucose', unzipped=None):
+        if ses:
+            assert(isinstance(ses, pyxnat.core.resources.Experiment))
+            self.session = ses
+        if not os.path.exists(self.dir_rawdata):
+            os.makedirs(self.dir_rawdata)
+        os.chdir(self.dir_rawdata)
+        if not unzipped:
+            return None
+        dests = []
+        try:
+            bs = self.stage_bfiles_rawdata(self.session, dcms0=unzipped, tracer=tracer, do_pull=False)
+            for b in bs:
+                dests.append(self.move_rawdata(self.filename2bf(b), tracer))
+                dests.append(self.move_rawdata(self.filename2dcm(b), tracer))
+                # .dcm has information needed by move_rawdata
+        except (IOError, TypeError, KeyError) as e:
+            warn(e.message)
+        return dests
+
+    def stage_rawdata_existing(self, ses=None, tracer='Fluorodeoxyglucose'):
+        if ses:
+            assert(isinstance(ses, pyxnat.core.resources.Experiment))
+            self.session = ses
+        if not os.path.exists(self.dir_rawdata):
+            os.makedirs(self.dir_rawdata)
+        os.chdir(self.dir_rawdata)
+        dests = []
+        try:
+            bs = self.stage_bfiles_existing(self.session, dcms0='*.dcm', tracer=tracer)
+            for b in bs:
+                dests.append(self.move_rawdata(self.filename2bf(b), tracer))
+                dests.append(self.move_rawdata(self.filename2dcm(b), tracer))
+                # .dcm has information needed by move_rawdata
+        except (IOError, TypeError, KeyError) as e:
             warn(e.message)
         return dests
 
@@ -431,25 +498,27 @@ class StageXnat(object):
             warn(e.message)
             return None
 
-    def stage_rawdata_zip(self, ses=None, tracer='Fluorodeoxyglucose', unzipped=None):
+    def stage_bfiles_existing(self, ses=None, dcms0='*.dcm', tracer='Fluorodeoxyglucose'):
+        """
+        downloads .bf files from the session resources RawData to class param dir_rawdata
+        :param ses is a pxnat session experiment:
+        :param dcms0 is a string specifier for requests from sess or a list of specifiers or a list of files:
+        :param tracer is from class param tracers:
+        :return bs is the list of downloaded .bf files:
+        """
         if ses:
             assert(isinstance(ses, pyxnat.core.resources.Experiment))
             self.session = ses
-        if not os.path.exists(self.dir_rawdata):
-            os.makedirs(self.dir_rawdata)
-        os.chdir(self.dir_rawdata)
-        if not unzipped:
-            return None
-        dests = []
+        if not dcms0:
+            return False
         try:
-            bs = self.stage_bfiles_rawdata(self.session, dcms0=unzipped, tracer=tracer, do_pull=False)
-            for b in bs:
-                dests.append(self.move_rawdata(self.filename2bf(b), tracer))
-                dests.append(self.move_rawdata(self.filename2dcm(b), tracer))
-                # .dcm has information needed by move_rawdata
-        except (IOError, TypeError, KeyError) as e:
+            dcms = self.list_rawdata_existing(dcms0)
+            bs = self.select_tracer(dcms, tracer)
+            bs = self.select_bfiles(bs)
+            return self.__list_basename(bs)
+        except AttributeError as e:
             warn(e.message)
-        return dests
+            return None
 
     def stage_freesurfer(self):
         """
@@ -555,7 +624,7 @@ class StageXnat(object):
 
     def is_umap(self, dcm):
         d = self.__get_dicom(dcm)
-        return d.SeriesDescription == u'Head_MRAC_Brain_HiRes_in_UMAP'
+        return u'UMAP' in d.SeriesDescription # == u'Head_MRAC_Brain_HiRes_in_UMAP'
 
     def list_rawdata(self, obj):
         lst = []
@@ -576,6 +645,17 @@ class StageXnat(object):
             # flattens list of lists
             # From Alex Martelli
             # https://stackoverflow.com/questions/952914/how-to-make-a-flat-list-out-of-list-of-lists?page=1&tab=votes#tab-top
+        return lst
+
+    def list_rawdata_existing(self, obj):
+        from glob2 import glob
+        lst = []
+        if '*' in obj:
+            lst = glob(obj)
+            if isinstance(lst, str):
+                lst = [lst]
+        else:
+            lst = [os.path.join(self.dir_rawdata, obj)]
         return lst
 
     def move_rawdata(self, rfile0, tracer):
@@ -628,6 +708,7 @@ class StageXnat(object):
         :return dcms is a list of *.dcm:
         """
         from zipfile import ZipFile
+        from zipfile import BadZipfile
         from os.path import exists
         from os.path import join
         if not do_pull:
@@ -639,11 +720,14 @@ class StageXnat(object):
             z1 = join(self.dir_rawdata, z)
             if not exists(z1):
                 resource.file(z).get(z1)
-            zf = ZipFile(z1, 'r')
-            zf.extractall(self.dir_rawdata)
-            zf.close()
-            os.remove(z1)
-            dcms.append(self.walk_and_move(z1, self.dir_rawdata))
+            try:
+                zf = ZipFile(z1, 'r')
+                zf.extractall(self.dir_rawdata)
+                zf.close()
+                os.remove(z1)
+                dcms.append(self.walk_and_move(z1, self.dir_rawdata))
+            except BadZipfile as e:
+                warn(e.message)
         return dcms
 
     def rawdata_destination(self, b, tracer):
@@ -739,10 +823,11 @@ class StageXnat(object):
         """
         from shutil import copyfileobj
         from zipfile import ZipFile
+        from zipfile import BadZipfile
         from glob2 import glob
 
         cookie = self.__jsession_request()
-        uri = self.host + "/data/experiments/%s/assessors/%s/%s?format=zip" % (self.str_session, variety, vtype)
+        uri = self.host + "/data/experiments_list/%s/assessors/%s/%s?format=zip" % (self.str_session, variety, vtype)
         zip = 'assessors_%s_%s.zip' % (variety, vtype)
         mri = os.path.join(self.dir_session, 'mri')
 
@@ -761,8 +846,8 @@ class StageXnat(object):
             p = glob(os.path.join('CNDA*freesurfer*', 'out', 'resources', 'DATA', 'files', '*', 'mri'))
             os.symlink(p[0], mri)
             print('Downloaded assessors %s to %s.\n' % (uri, zip))
-        except IOError as e:
-            raise AssertionError(e.message)
+        except (BadZipfile, IOError) as e:
+            warn(e.message)
 
         self.__jsession_expire(cookie)
         return mri
@@ -945,14 +1030,14 @@ class StageXnat(object):
     def __get_assessor(self, cookie):
 
         # get list of objects
-        u = self.host + "/data/experiments/%s/assessors/ALL/resources/*freesurfer*/files?format=json" % self.str_session
+        u = self.host + "/data/experiments_list/%s/assessors/ALL/resources/*freesurfer*/files?format=json" % self.str_session
         r = self.__get_url(u, headers=cookie, verify=False)
 
         # John Flavin:  "I don't like the results being in a list, so I will build a dict keyed off file name"
         adict = {obj['Name']: {'URI': self.host+obj['URI']} for obj in r.json()["ResultSet"]["Result"]}
 
         # have to manually add absolutePath with a separate request
-        u = self.host + "/data/experiments/%s/assessors/All/resources/*freesurfer*/files?format=json&locator=absolutePath" % self.str_session
+        u = self.host + "/data/experiments_list/%s/assessors/All/resources/*freesurfer*/files?format=json&locator=absolutePath" % self.str_session
         r = self.__get_url(u, headers=cookie, verify=False)
         for a in r.json()["ResultSet"]["Result"]:
             adict[a['Name']]['absolutePath'] = self.host+a['absolutePath']
@@ -983,7 +1068,7 @@ class StageXnat(object):
             raise AssertionError("self.__get_dicomdict has no scanid")
 
         # get list of DICOMs
-        u = self.host + "/data/experiments/%s/scans/%s/resources/DICOM/files?format=json" % (sessid, scanid)
+        u = self.host + "/data/experiments_list/%s/scans/%s/resources/DICOM/files?format=json" % (sessid, scanid)
         r = self.__get_url(u, headers=cookie, verify=False)
 
         # John Flavin:  "I don't like the results being in a list, so I will build a dict keyed off file name"
@@ -991,7 +1076,7 @@ class StageXnat(object):
                  for dicom in r.json()["ResultSet"]["Result"]}
 
         # John Flavin:  manually add absolutePath with a separate request
-        u = self.host + "/data/experiments/%s/scans/%s/resources/DICOM/files?format=json&locator=absolutePath" % (sessid, scanid)
+        u = self.host + "/data/experiments_list/%s/scans/%s/resources/DICOM/files?format=json&locator=absolutePath" % (sessid, scanid)
         r = self.__get_url(u, headers=cookie, verify=False)
         for dcm in r.json()["ResultSet"]["Result"]:
             ddict[dcm['Name']]['absolutePath'] = self.host+dcm['absolutePath']
@@ -1028,14 +1113,14 @@ class StageXnat(object):
 
         # get list of DICOMs
         #print('__get_rawdatadict:  for session %s.' % self.str_session)
-        u = self.host + "/data/experiments/%s/resources/RawData/files?format=json" % self.str_session
+        u = self.host + "/data/experiments_list/%s/resources/RawData/files?format=json" % self.str_session
         r = self.__get_url(u, headers=cookie, verify=False)
 
         # John Flavin:  "I don't like the results being in a list, so I will build a dict keyed off file name"
         rddict = {rd['Name']: {'URI': self.host+rd['URI']} for rd in r.json()["ResultSet"]["Result"]}
 
         # have to manually add absolutePath with a separate request
-        u = self.host + "/data/experiments/%s/resources/RawData/files?format=json&locator=absolutePath" % self.str_session
+        u = self.host + "/data/experiments_list/%s/resources/RawData/files?format=json&locator=absolutePath" % self.str_session
         r = self.__get_url(u, headers=cookie, verify=False)
         for rd1 in r.json()["ResultSet"]["Result"]:
             rddict[rd1['Name']]['absolutePath'] = self.host+rd1['absolutePath']
@@ -1049,7 +1134,7 @@ class StageXnat(object):
         :return:
         """
         print("\n__get_scan_resources:  for scan %s.\n" % scanid)
-        u = self.host + "/data/experiments/%s/scans/%s/resources?format=json" % (self.str_session, scanid)
+        u = self.host + "/data/experiments_list/%s/scans/%s/resources?format=json" % (self.str_session, scanid)
         r = self.__get_url(u, headers=cookie, verify=False)
         resources = r.json()["ResultSet"]["Result"]
         #print('Found resources %s.' % ', '.join(res["label"] for res in resources))
@@ -1062,7 +1147,7 @@ class StageXnat(object):
         :return:
         """
         print("\n__get_scanid_list:  for session ID %s.\n" % self.str_session)
-        u = self.host + "/data/experiments/%s/scans?format=json" % self.str_session
+        u = self.host + "/data/experiments_list/%s/scans?format=json" % self.str_session
         r = self.__get_url(u, headers=cookie, verify=False)
         sid_list = r.json()["ResultSet"]["Result"]
         idl = [scn['ID'] for scn in sid_list]

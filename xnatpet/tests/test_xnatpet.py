@@ -2,6 +2,8 @@ import unittest
 from xnatpet.xnatpet import StageXnat
 import os
 from uuid import uuid1
+import urllib3
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 class TestPrimitives(unittest.TestCase):
 
@@ -93,6 +95,23 @@ class TestStaging(unittest.TestCase):
 
     def setUp(self):
         self._cachedir = '/scratch/jjlee/Singularity'
+        self.sxnat7 = StageXnat(
+            user=os.getenv('CNDA_UID'), password=os.getenv('CNDA_PWD'),
+            cachedir=self._cachedir,
+            prj='CCIR_00993', sbj='CNDA06_S02951', ses='CNDA06_E06418') # Zip archive
+        self.sxnat7.debug_uri = True
+        self.sxnat8 = StageXnat(
+            user=os.getenv('CNDA_UID'), password=os.getenv('CNDA_PWD'),
+            cachedir=self._cachedir,
+            prj='CCIR_00993', sbj='CNDA06_S02548', ses='CNDA06_E05566') # Zip archive
+        self.sxnat8.debug_uri = True
+        self.sxnat9 = StageXnat(
+            user=os.getenv('CNDA_UID'), password=os.getenv('CNDA_PWD'),
+            cachedir=self._cachedir,
+            prj='CCIR_00993', sbj='CNDA06_S03292', ses='CNDA06_E08068') # Zip archive
+        self.sxnat9.debug_uri = True
+
+    def disabled(self):
         self.sxnat = StageXnat(
             user=os.getenv('CNDA_UID'), password=os.getenv('CNDA_PWD'),
             cachedir=self._cachedir,
@@ -100,19 +119,19 @@ class TestStaging(unittest.TestCase):
         self.sxnat2 = StageXnat(
             user=os.getenv('CNDA_UID'), password=os.getenv('CNDA_PWD'),
             cachedir=self._cachedir,
-            prj='CCIR_00754', sbj='HYGLY48', ses='CNDA_E249152', scn='84') # bug in 2019 Mar-Apr; permissions to H48 lost
+            prj='CCIR_00559', sbj='NP995_05', ses='CNDA_E139846', scn='84') # bug in 2019 Mar-Apr; permissions to H48 lost
         self.sxnat3 = StageXnat(
             user=os.getenv('CNDA_UID'), password=os.getenv('CNDA_PWD'),
             cachedir=self._cachedir,
-            prj='CCIR_00754', sbj='HYGLY30', ses='CNDA_E193492', scn='95') # FDG UMAP
+            prj='CCIR_00559', sbj='NP995_25', ses='CNDA06_E03056', scn='96') # FDG UMAP
         self.sxnat4 = StageXnat(
             user=os.getenv('CNDA_UID'), password=os.getenv('CNDA_PWD'),
             cachedir=self._cachedir,
-            prj='CCIR_00559')
+            prj='CCIR_00754', sbj='HYGLY05', ses='CNDA_E158712')
         self.sxnat5 = StageXnat(
             user=os.getenv('CNDA_UID'), password=os.getenv('CNDA_PWD'),
             cachedir=self._cachedir,
-            prj='CCIR_00754', sbj='NP995_22', ses='CNDA_E158842') # Zip archive
+            prj='CCIR_00754', sbj='HYGLY05', ses='CNDA_E162949') # Zip archive
         self.sxnat6 = StageXnat(
             user=os.getenv('CNDA_UID'), password=os.getenv('CNDA_PWD'),
             cachedir=self._cachedir,
@@ -152,22 +171,47 @@ class TestStaging(unittest.TestCase):
         print('\ntest_stage_project\n')
 
     def test_stage_subject(self):
-        d = self.sxnat5.stage_subject()
+        d = self.sxnat7.stage_subject()
         print('\ntest_stage_subject\n')
 
+    def test_stage_session2(self):
+        self.sxnat2.DO_pull_rawdata = False # manually placed in rawdata
+        self.sxnat2.DO_stage_umaps = False
+        self.sxnat2.DO_stage_freesurfer = False
+        for t in self.sxnat2.tracers:
+            self.sxnat2.stage_rawdata_existing(tracer=t)
+        print('\ntest_stage_session2\n')
+
     def test_stage_session3(self):
-        d = self.sxnat3.stage_session()
+        self.sxnat3.DO_pull_rawdata = False # manually placed in rawdata
+        self.sxnat3.DO_stage_umaps = False
+        self.sxnat3.DO_stage_freesurfer = False
+        for t in self.sxnat3.tracers:
+            self.sxnat3.stage_rawdata_existing(tracer=t)
         print('\ntest_stage_session3\n')
 
-    def test_stage_session5(self):
-        self.sxnat5.DO_pull_rawdata_zip = False
-        d = self.sxnat5.stage_session()
+    def test_stage_session4and5(self):
+        self.sxnat4.DO_pull_rawdata = False # manually placed in rawdata
+        self.sxnat4.DO_stage_umaps = True
+        self.sxnat4.DO_stage_freesurfer = True
+        for t in self.sxnat4.tracers:
+            self.sxnat4.stage_rawdata_existing(tracer=t)
+        self.sxnat5.DO_pull_rawdata = False # manually placed in rawdata
+        self.sxnat5.DO_stage_umaps = True
+        self.sxnat5.DO_stage_freesurfer = True
+        for t in self.sxnat5.tracers:
+            self.sxnat5.stage_rawdata_existing(tracer=t)
         print('\ntest_stage_session5\n')
 
-    def test_stage_session6(self):
-        self.sxnat6.DO_pull_rawdata_zip = False
-        d = self.sxnat6.stage_session()
-        print('\ntest_stage_session6\n')
+    def test_stage_session9(self):
+        self.sxnat9.DO_pull_rawdata_zip = False
+        self.sxnat9.DO_stage_rawdata = True
+        self.sxnat9.DO_stage_umaps = False
+        self.sxnat9.DO_stage_freesurfer = True
+        for t in self.sxnat9.tracers:
+            self.sxnat9.stage_rawdata_existing(tracer=t)
+        #d = self.sxnat9.stage_session()
+        print('\ntest_stage_session9\n')
 
     def test_stage_scan(self):
         d = self.sxnat.stage_scan(self.sxnat.scan)
@@ -188,13 +232,33 @@ class TestStaging(unittest.TestCase):
         print(d.values()[0])
 
     def test_stage_umaps(self):
-        d = self.sxnat3.stage_umaps(self.sxnat.session)
-        self.assertEqual(self._cachedir+'/CCIR_00754/ses-E193492/umaps/Head_MRAC_Brain_HiRes_in_UMAP_DT20170726', d[0])
+        d = self.sxnat7.stage_umaps(self.sxnat7.session)
+        self.assertEqual(self._cachedir+'/CCIR_00993/ses-CNDA06_E06418/umaps/Head_MRAC_Brain_HiRes_in_UMAP_DT20191010', d[0])
         print('\ntest_stage_umaps\n')
         print(d)
 
+    def test_stage_umaps1(self):
+        prjs = ['CCIR_00993']
+        exps = ['E01040', 'E03140', 'E05565', 'E06418', 'E08068', 'E257706', 'E261552', 'E268533']
+        for p in prjs:
+            sxnat = StageXnat(
+                user=os.getenv('CNDA_UID'), password=os.getenv('CNDA_PWD'),
+                cachedir=self._cachedir,
+                prj=p)
+            sxnat.DO_pull_rawdata = False
+            sxnat.DO_stage_freesurfer = False
+            sxnat.DO_stage_umaps = True
+            prj = sxnat.project
+            for s in prj.subjects().get():
+                for e in prj.subject(s).experiments().get():
+                    for e1 in exps:
+                        if e1 in e:
+                            sxnat.session = prj.subject(s).experiment(e)
+                            sxnat.stage_umaps(sxnat.session, umap_desc=u'UMAP')
+            sxnat.disconnect()
+
     def test_stage_freesurfer(self):
-        d = self.sxnat.stage_freesurfer()
+        d = self.sxnat7.stage_freesurfer()
         self.assertTrue(os.path.exists(d))
         print('\ntest_stage_freesurfer\n')
         print(d)
@@ -204,7 +268,7 @@ class TestStaging(unittest.TestCase):
 class TestSortRawData(unittest.TestCase):
 
     def setUp(self):
-        self._cachedir = '/scratch2/jjlee/Singularity'
+        self._cachedir = '/scratch/jjlee/Singularity'
         self.sxnat = StageXnat(
             user=os.getenv('CNDA_UID'), password=os.getenv('CNDA_PWD'),
             cachedir=self._cachedir,
@@ -224,9 +288,21 @@ class TestSortRawData(unittest.TestCase):
         print(d)
 
     def test_sort_rawdata(self):
-        ses = self.sxnat.project.experiment('CNDA_E248568')
-        for t in self.sxnat.tracers:
-            self.sxnat.sort_rawdata(ses, tracer=t)
+        theprj = 'CCIR_00754'
+        #exp559 = ['CNDA_E153610', 'CNDA_E120895', 'CNDA_E122256', 'CNDA_E146371' , 'CNDA_E147363' , 'CNDA_E117002' , 'CNDA_E119550' , 'CNDA_E146273' , 'CNDA_E149570']
+        #exp754 = ['CNDA_E164929', 'CNDA_E168611', 'CNDA_E167319', 'CNDA_E169356', 'CNDA_E170328', 'CNDA_E172857', 'CNDA_E173743', 'CNDA_E174947']
+        exp754 = ['CNDA10_E00165']
+        self._cachedir = '/scratch/jjlee/Singularity'
+        self.sxnat = StageXnat(
+            user=os.getenv('CNDA_UID'), password=os.getenv('CNDA_PWD'),
+            cachedir=self._cachedir,
+            prj=theprj)
+
+        for e in exp754:
+            ses = self.sxnat.project.experiment(e)
+            for t in self.sxnat.tracers:
+                self.sxnat.sort_rawdata(ses, tracer=t)
+        self.sxnat.disconnect()
         print('\ntest_sort_rawdata\n')
 
 

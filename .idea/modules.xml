@@ -2,6 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
+      <module fileurl="file://$PROJECT_DIR$/../NiftyPETr/NiftyPETy/.idea/NiftyPETy.iml" filepath="$PROJECT_DIR$/../NiftyPETr/NiftyPETy/.idea/NiftyPETy.iml" />
       <module fileurl="file://$PROJECT_DIR$/.idea/XnatPET.iml" filepath="$PROJECT_DIR$/.idea/XnatPET.iml" />
     </modules>
   </component>
