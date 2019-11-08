@@ -1,0 +1,42 @@
+#! /bin/bash
+
+# resources #################################
+
+#PBS -N run_construct_resolved_adhoc
+#PBS -l nodes=1:ppn=1,walltime=24:00:00
+#PBS -t 1-2
+
+
+
+# commands for nodes ########################
+
+# manually, from login node:
+# singularity pull docker://jjleewustledu/niftymcr-image:construct_resolved
+#DT=$(date +"%Y%m%d%H%M%S")
+
+PRJ=$1 # e.g., $PRJ == CCIR_00559
+SES=$2 #       $SES == ses-E00026
+TRA=$3 #       $TRA == HO_DT20190108111833.000000-Converted-NAC
+unset CONDA_DEFAULT_ENV
+module load singularity-3.0.2
+LIST=$SINGULARITY_HOME/list_data_adhoc.log
+if [[ $# -eq 3 ]]; then
+    singularity exec \
+		--bind $SINGULARITY_HOME:/SubjectsDir \
+		--bind /export:/export \
+		$SINGULARITY_HOME/niftyresolve-image_construct_resolved.sif \
+		"/work/run_ConstructResolvedApp.sh" "/export/matlab/MCR/R2018b/v95" \
+		"$PRJ" "$SES" "$TRA"
+else
+    input=`head -n $PBS_ARRAYID $LIST | tail -1`
+    singularity exec \
+		--bind $SINGULARITY_HOME:/SubjectsDir \
+		--bind /export:/export \
+		$SINGULARITY_HOME/niftyresolve-image_construct_resolved.sif \
+		"/work/run_ConstructResolvedApp.sh" "/export/matlab/MCR/R2018b/v95" \
+		$input
+fi
+
+
+
+

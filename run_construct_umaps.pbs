@@ -1,0 +1,44 @@
+#! /bin/bash
+
+# resources #################################
+
+#PBS -N run_construct_umaps
+#PBS -l nodes=1:ppn=1,walltime=3:00:00,mem=16gb
+#PBS -t 1-69
+
+
+
+# commands for nodes ########################
+
+# manually, from login node:
+# singularity pull docker://jjleewustledu/niftyumaps-image:construct_umaps
+#DT=$(date +"%Y%m%d%H%M%S")
+
+PRJ=$1 # e.g., $PRJ == CCIR_00559
+SES=$2 #       $SES == ses-E00026
+unset CONDA_DEFAULT_ENV
+module load singularity-3.0.2
+# rm -f $SINGULARITY_HOME/list_data_umaps.log
+#if [[ ! -f $SINGULARITY_HOME/list_data_umaps.log ]]; then
+#    $SINGULARITY_HOME/list_data_umaps.sh > $SINGULARITY_HOME/list_data_umaps.log
+#fi
+if [[ $# -eq 2 ]]; then
+    singularity exec \
+		--bind $SINGULARITY_HOME:/SubjectsDir \
+		--bind /export:/export \
+		$SINGULARITY_HOME/niftyumaps-image_construct_umaps.sif \
+		"/work/run_ConstructUmapsApp.sh" "/export/matlab/MCR/R2018b/v95" \
+		"$PRJ" "$SES"
+else
+    input=`head -n $PBS_ARRAYID $SINGULARITY_HOME/list_data_umaps.log | tail -1`
+    singularity exec \
+		--bind $SINGULARITY_HOME:/SubjectsDir \
+		--bind /export:/export \
+		$SINGULARITY_HOME/niftyumaps-image_construct_umaps.sif \
+		"/work/run_ConstructUmapsApp.sh" "/export/matlab/MCR/R2018b/v95" \
+		$input
+fi
+
+
+
+

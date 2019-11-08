@@ -1,0 +1,27 @@
+list_aborts.py:22: UserWarning: isabort:IOError on CCIR_00559/ses-E146371/HO_DT20150109111503.000000-Converted-NAC/output/PET/HO_DT20150109111503.json
+  warn('isabort:IOError on '+fname)
+list_aborts.py:50: UserWarning: abnormal_counting:IOError on CCIR_00559/ses-E147363/OC_DT20150123110653.000000-Converted-NAC/output/PET/oc.nii.gz
+  warn('abnormal_counting:IOError on '+nii);
+list_aborts.py:22: UserWarning: isabort:IOError on CCIR_00559/ses-E117002/OO_DT20140327124630.000000-Converted-NAC/output/PET/OO_DT20140327124630.json
+  warn('isabort:IOError on '+fname)
+list_aborts.py:22: UserWarning: isabort:IOError on CCIR_00559/ses-E146273/OC_DT20150106111950.000000-Converted-NAC/output/PET/OC_DT20150106111950.json
+  warn('isabort:IOError on '+fname)
+list_aborts.py:50: UserWarning: abnormal_counting:IOError on CCIR_00754/ses-E169356/OO_DT20151203100216.000000-Converted-NAC/output/PET/oo.nii.gz
+  warn('abnormal_counting:IOError on '+nii);
+list_aborts.py:50: UserWarning: abnormal_counting:IOError on CCIR_00754/ses-E169356/OO_DT20151203112520.000000-Converted-NAC/output/PET/oo.nii.gz
+  warn('abnormal_counting:IOError on '+nii);
+list_aborts.py:50: UserWarning: abnormal_counting:IOError on CCIR_00559/ses-E224109/OC_DT20170906104333.000000-Converted-NAC/output/PET/oc.nii.gz
+  warn('abnormal_counting:IOError on '+nii);
+list_aborts.py:50: UserWarning: abnormal_counting:IOError on CCIR_00754/ses-E158842/OC_DT20150710114310.000000-Converted-NAC/output/PET/oc.nii.gz
+  warn('abnormal_counting:IOError on '+nii);
+list_aborts.py:22: UserWarning: isabort:IOError on CCIR_00754/ses-E178378/OO_DT20160408110051.000000-Converted-NAC/output/PET/OO_DT20160408110051.json
+  warn('isabort:IOError on '+fname)
+list_aborts.py:22: UserWarning: isabort:IOError on CCIR_00754/ses-E186470/OO_DT20160408110051.000000-Converted-NAC/output/PET/OO_DT20160408110051.json
+  warn('isabort:IOError on '+fname)
+list_aborts.py:22: UserWarning: isabort:IOError on CCIR_00754/ses-E191506/OO_DT20160923105931.000000-Converted-NAC/output/PET/OO_DT20160923105931.json
+  warn('isabort:IOError on '+fname)
+list_aborts.py:22: UserWarning: isabort:IOError on CCIR_00754/ses-E194463/OO_DT20161021114240.000000-Converted-NAC/output/PET/OO_DT20161021114240.json
+  warn('isabort:IOError on '+fname)
+list_aborts.py:22: UserWarning: isabort:IOError on CCIR_00754/ses-E225225/HO_DT20170915123259.000000-Converted-NAC/output/PET/HO_DT20170915123259.json
+  warn('isabort:IOError on '+fname)
+jjlee@dl02

@@ -1,6 +1,6 @@
 """orchestrate.py
 Usage:
-    orchestrate.py (scans|sessions|subjects) HOST USERNAME PASSWORD WRAPPER_NAME PARENT_ID PROJECT
+    orchestrate.py (scans|experiments_list|subjects) HOST USERNAME PASSWORD WRAPPER_NAME PARENT_ID PROJECT
     orchestrate.py (-h | --help)
     orchestrate.py --version
 Options:
@@ -44,14 +44,14 @@ project     = args.get('PROJECT')
 if args.get("scans"):
     thingString = "scans"
     xsiType = "xnat:imageScanData"
-    searchUriTemplate = "/data/experiments/{}/scans"
+    searchUriTemplate = "/data/experiments_list/{}/scans"
     jsonpathSearch = '$.ResultSet.Result[*].ID'
-    launchArgTemplate = "/experiments/{}".format(parentId) + "/scans/{}"
-elif args.get("sessions"):
-    thingString = "sessions"
+    launchArgTemplate = "/experiments_list/{}".format(parentId) + "/scans/{}"
+elif args.get("experiments_list"):
+    thingString = "experiments_list"
     xsiType = "xnat:imageSessionData"
-    searchUriTemplate = "/data/subjects/{}/experiments"
-    jsonpathSearch = '$.items[0].children[?(@.field == "experiments/experiment")].items[*].data_fields.ID'
+    searchUriTemplate = "/data/subjects/{}/experiments_list"
+    jsonpathSearch = '$.items[0].children[?(@.field == "experiments_list/experiment")].items[*].data_fields.ID'
     launchArgTemplate = "{}"
 elif args.get("subjects"):
     thingString = "subjects"
@@ -60,7 +60,7 @@ elif args.get("subjects"):
     jsonpathSearch = "$.ResultSet.Result[*].ID"
     launchArgTemplate = "{}"
 else:
-    die("ERROR: Please run orchestrate.py with the first argument being \"scans\", \"sessions\", or \"subjects\".", exit=__doc__)
+    die("ERROR: Please run orchestrate.py with the first argument being \"scans\", \"experiments_list\", or \"subjects\".", exit=__doc__)
 
 searchUri = searchUriTemplate.format(parentId)
 

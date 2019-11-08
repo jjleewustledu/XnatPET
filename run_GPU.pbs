@@ -1,0 +1,45 @@
+#! /bin/bash
+
+# resources #################################
+
+#PBS -N run_GPU
+#PBS -l nodes=1:ppn=1:gpus=1,walltime=00:10:00
+#PBS -t 1-2
+
+
+
+# commands for nodes ########################
+# manually, from login node:
+# singularity pull docker://jjleewustledu/niftygpu-image:debug
+#DT=$(date +"%Y%m%d%H%M%S")
+
+PRJ=$1 # e.g., $PRJ == CCIR_00559
+SES=$2 #       $SES == ses-E00026
+TRA=$3 #       $TRA == HO_DT20190108111833.000000-Converted-NAC
+set -e
+unset CONDA_DEFAULT_ENV
+module load cuda-10.1
+module load singularity-3.0.2
+if [[ ! -f $SINGULARITY_HOME/list_data_GPU.log ]]; then
+    $SINGULARITY_HOME/list_data_GPU.sh > $SINGULARITY_HOME/list_data_GPU.log
+fi
+if [[ $# -eq 3 ]]; then
+    singularity exec \
+		--nv \
+		--bind $SINGULARITY_HOME/hardwareumaps:/hardwareumaps \
+		--bind $SINGULARITY_HOME:/SubjectsDir \
+		$SINGULARITY_HOME/niftygpu-image_debug.sif \
+		"python" "/work/NiftyGPU/respet/recon/reconstruction.py" "-p" "/SubjectsDir/$PRJ/$SES/$TRA"
+else
+    input=`head -n $PBS_ARRAYID $SINGULARITY_HOME/list_data_GPU.log | tail -1`
+    nvidia-smi
+    nvidia-smi -q
+    export CUDA_DEVICE_ORDER="PCI_BUS_ID"
+    export CUDA_VISIBLE_DEVICES=0
+    singularity exec \
+		--nv \
+		--bind $SINGULARITY_HOME/hardwareumaps:/hardwareumaps \
+		--bind $SINGULARITY_HOME:/SubjectsDir \
+		$SINGULARITY_HOME/niftygpu-image_debug.sif \
+		"python" "/work/NiftyGPU/respet/recon/reconstruction.py" "-p" "/SubjectsDir/$input"
+fi

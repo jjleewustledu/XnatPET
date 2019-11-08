@@ -1,0 +1,51 @@
+#! /bin/bash
+
+# resources #################################
+
+#PBS -N run_reconstruction
+#PBS -l nodes=1:ppn=1:gpus=1,walltime=18:00:00,mem=16gb
+#PBS -t 1-377
+
+
+
+# commands for nodes ########################
+# manually, from login node:
+# singularity pull docker://jjleewustledu/niftypetr-image:reconstruction_nvdevices
+#DT=$(date +"%Y%m%d%H%M%S")
+#nvidia-smi > nvidia-smi-$DT.log
+
+AC=NAC # PBS doesn't easily accept user-defined args
+PRJ=$1 # e.g., $PRJ == CCIR_00559
+SES=$2 #       $SES == ses-E00026
+TRA=$3 #       $TRA == HO_DT20190108111833.000000-Converted-NAC
+set -e
+unset CONDA_DEFAULT_ENV
+module load cuda-10.1
+module load singularity-3.0.2
+if [[ ! -f $SINGULARITY_HOME/list_data_reconstruction_$AC.log ]]; then
+    $SINGULARITY_HOME/list_data_reconstruction.sh $AC > $SINGULARITY_HOME/list_data_reconstruction_${AC}.log
+fi
+deviceQuery
+nvidia-smi -q
+if [[ $# -eq 3 ]]; then
+    #export CUDA_DEVICE_ORDER=PCI_BUS_ID
+    #export CUDA_VISIBLE_DEVICES=0
+    singularity exec \
+	--nv \
+	--bind $SINGULARITY_HOME/hardwareumaps:/hardwareumaps \
+	--bind $SINGULARITY_HOME:/SubjectsDir \
+	$SINGULARITY_HOME/niftypetr-image_reconstruction.sif \
+	"python" "/work/NiftyPETy/respet/recon/reconstruction.py" \
+	"-p" "/SubjectsDir/$PRJ/$SES/$TRA" "-g" "0" "-v" "false"
+else
+    input=`head -n $PBS_ARRAYID $SINGULARITY_HOME/list_data_reconstruction_${AC}.log | tail -1`
+    #export CUDA_DEVICE_ORDER=PCI_BUS_ID
+    #export CUDA_VISIBLE_DEVICES=0
+    singularity exec \
+	--nv \
+	--bind $SINGULARITY_HOME/hardwareumaps:/hardwareumaps \
+	--bind $SINGULARITY_HOME:/SubjectsDir \
+	$SINGULARITY_HOME/niftypetr-image_reconstruction.sif \
+	"python" "/work/NiftyPETy/respet/recon/reconstruction.py" \
+	"-p" "/SubjectsDir/$input" "-g" "0" "-v" "false"
+fi

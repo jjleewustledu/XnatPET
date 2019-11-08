@@ -1,0 +1,99 @@
+"sub-S28763" "ses-E118507" -> ct
+"sub-S28763" "ses-E118669" -> umap		DT04 -> ses-E118669
+"sub-S35090" "ses-E153610" -> OC-NAC, OO-NAC	H46L402 -> ses-E153610
+"sub-S29097" "ses-E120456" -> ct 
+"sub-S29097" "ses-E120895" -> umap		NP995_05 -> ses-E120895
+"sub-S29097" "ses-E122256" -> umap		NP995_05 -> ses-E122256
+"sub-S32920" "ses-E138767" -> ct
+"sub-S32920" "ses-E139712" -> ct
+"sub-S32920" "ses-E139846" -> SCANS
+"sub-S33789" "ses-E146332" -> ct
+"sub-S33789" "ses-E146371" -> umap		NP995_10 -> ses-E146371
+"sub-S33789" "ses-E147363" -> umap		NP995_10 -> ses-E147363
+"sub-S33789" "ses-E225225" -> 1st complete
+"sub-S35201" "ses-E154195" -> ct
+"sub-S35201" "ses-E154387" -> complete
+"sub-S35897" "ses-E158631" -> ct
+"sub-S35897" "ses-E158712" -> umap		HYGLY05 (empty http)
+"sub-S35897" "ses-E162949" -> umap		HYGLY05 (empty http)
+"sub-S35924" "ses-E158798" -> ct
+"sub-S35924" "ses-E158842" -> complete
+"sub-S35924" "ses-E158844" -> umap		NP995_22 (no exp http)
+"sub-S35924" "ses-E160652" -> complete		
+"sub-S37005" "ses-E164234" -> ct
+"sub-S37005" "ses-E164929" -> umap		HYGLY08 -> ses-E164929
+"sub-S37005" "ses-E168611" -> umap		HYGLY08 -> ses-E168611
+"sub-S37244" "ses-E167189" -> ct
+"sub-S37244" "ses-E167319" -> umap		HYGLY09 -> ses-E167319
+"sub-S37244" "ses-E169356" -> umap		HYGLY09 -> ses-E169356
+"sub-S37244" "ses-E52823"  -> SCANS
+"sub-S15292" "ses-E53317"  -> umap		P8085 (empty http) 
+"sub-S37244" "ses-E53343"  -> ct
+"sub-S37721" "ses-E170261" -> ct
+"sub-S37721" "ses-E170328" -> umap		HYGLY14 -> ses-E170328
+"sub-S37992" "ses-E116965" -> ct
+"sub-S28422" "ses-E117002" -> umap		TW03 -> ses-E117002
+"sub-S24822" "ses-E119550" -> umap		TW03 -> ses-E119550
+"sub-S37992" "ses-E172809" -> ct
+"sub-S37992" "ses-E172857" -> umap		HYGLY11 -> ses-E172857
+"sub-S37992" "ses-E173743" -> umap		HYGLY11 -> ses-E173743
+"sub-S38239" "ses-E174896" -> ct
+"sub-S38239" "ses-E174947" -> umap		HYGLY16 -> ses-E174947
+"sub-S38239" "ses-E178111" -> complete
+"sub-S38675" "ses-E145976" -> ct
+"sub-S33758" "ses-E146273" -> umap		NP995_14 -> ses-E146273
+"sub-S33758" "ses-E149570" -> umap		NP995_14 -> ses-E149570
+"sub-S38675" "ses-E177002" -> ct
+"sub-S38675" "ses-E177223" -> complete
+"sub-S38675" "ses-E178568" -> complete
+"sub-S38938" "ses-E178378" -> complete
+"sub-S38938" "ses-E183485" -> OC-NAC		HYGLY23 (aborted scan)
+"sub-S38938" "ses-E186470" -> complete
+"sub-S38938" "ses-E186616" -> complete
+"sub-S38938" "ses-E193485" -> ct
+"sub-S38938" "ses-E216027" -> complete
+"sub-S58922" "ses-E251344" -> complete/FDG-NAC	NP99519
+"sub-S39157" "ses-E179592" -> ct
+"sub-S39157" "ses-E179620" -> complete
+"sub-S39157" "ses-E189082" -> complete
+"sub-S39781" "ses-E181248" -> ct
+"sub-S39781" "ses-E181327" -> complete
+"sub-S39781" "ses-E182107" -> complete
+"sub-S40037" "ses-E182819" -> ct
+"sub-S40037" "ses-E182863" -> complete 
+"sub-S41723" "ses-E190613" -> ct
+"sub-S41723" "ses-E190711" -> complete
+"sub-S41723" "ses-E191506" -> complete
+"sub-S42130" "ses-E193492" -> complete 
+"sub-S42130" "ses-E193668" -> ct
+"sub-S42130" "ses-E194831" -> complete
+"sub-S42130" "ses-E220491" -> complete
+"sub-S42756" "ses-E195833" -> ct
+"sub-S42756" "ses-E197207" -> complete
+"sub-S42756" "ses-E201038" -> complete
+"sub-S47634" "ses-E205407" -> ct
+"sub-S47634" "ses-E205451" -> complete
+"sub-S47634" "ses-E206595" -> complete
+"sub-S47634" "ses-E233571" -> complete
+"sub-S47634" "ses-E234233" -> complete
+"sub-S48783" "ses-E209718" -> ct
+"sub-S48783" "ses-E209975" -> complete
+"sub-S48783" "ses-E214212" -> complete
+"sub-S48783" "ses-E225407" -> complete
+"sub-S49157" "ses-E211905" -> ct
+"sub-S49157" "ses-E211960" -> complete
+"sub-S52590" "ses-E223981" -> ct
+"sub-S52590" "ses-E228496" -> complete
+"sub-S52616" "ses-E224109" -> NAC           HYGLY42
+"sub-S57920" "ses-E247390" -> ct
+"sub-S57920" "ses-E247428" -> complete
+"sub-S57920" "ses-E248403" -> FDG-NAC		HYGLY47 (empty http)
+"sub-S58163" "ses-E00853"  -> complete
+"sub-S58163" "ses-E248492" -> ct
+"sub-S58163" "ses-E248568" -> complete
+"sub-S58258" "ses-E00165"  -> SCANS		HYGLY48 -> ses-E00165
+"sub-S58258" "ses-E249046" -> ct
+"sub-S61826" "ses-E262767" -> FDG-NAC		NP995_24
+"sub-S63372" "ses-E00026"  -> complete
+"sub-S63372" "ses-E268876" -> ct
+"sub-S63372" "ses-E268925" -> complete

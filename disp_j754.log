@@ -1,0 +1,188 @@
+for f = fields754'
+disp(j754.(f{1}))
+end
+    experiments: {'CNDA_E214213'}
+             id: 'CNDA_S49677'
+    twilite_cal: 1
+
+    experiments: {4×1 cell}
+             id: 'CNDA_S35924'
+             ct: 1
+            sid: 'CNDA_S35924'
+
+    experiments: {'CNDA_E193513'}
+             id: 'CNDA_S42132'
+    twilite_cal: 1
+
+    experiments: {2×1 cell}
+             id: 'CNDA_S58163'
+             ct: 1
+            sid: 'CNDA_S58163'
+
+    experiments: {'CNDA_E190679'}
+             id: 'CNDA_S41732'
+    twilite_cal: 1
+
+    experiments: {'CNDA_E203223'}
+             id: 'CNDA_S47129'
+    twilite_cal: 1
+
+    experiments: {2×1 cell}
+             id: 'CNDA_S49157'
+             ct: 1
+            sid: 'CNDA_S49157'
+
+    experiments: {3×1 cell}
+             id: 'CNDA_S37992'
+             ct: 1
+            sid: 'CNDA_S37992'
+
+    experiments: {2×1 cell}
+             id: 'CNDA_S47634'
+             ct: 1
+            sid: 'CNDA_S47634'
+
+    experiments: {3×1 cell}
+             id: 'CNDA_S42756'
+             ct: 1
+            sid: 'CNDA_S42756'
+
+    experiments: {3×1 cell}
+             id: 'CNDA_S48783'
+             ct: 1
+            sid: 'CNDA_S48783'
+
+    experiments: {2×1 cell}
+             id: 'CNDA_S37721'
+             ct: 1
+            sid: 'CNDA_S37721'
+
+    experiments: {3×1 cell}
+             id: 'CNDA_S42130'
+             ct: 1
+            sid: 'CNDA_S42130'
+
+    experiments: {'CNDA_E175694'}
+             id: 'CNDA_S38357'
+
+    experiments: {'CNDA_E190397'}
+             id: 'CNDA_S41681'
+    twilite_cal: 1
+
+    experiments: {'CNDA_E232348'}
+             id: 'CNDA_S54231'
+
+    experiments: {2×1 cell}
+             id: 'CNDA_S42318'
+             ct: 1
+
+    experiments: {'CNDA_E184124'}
+             id: 'CNDA_S40238'
+    twilite_cal: 1
+
+    experiments: {'CNDA_E174880'}
+             id: 'CNDA_S38234'
+
+    experiments: {3×1 cell}
+             id: 'CNDA_S38239'
+             ct: 1
+            sid: 'CNDA_S38239'
+
+    experiments: {'CNDA_E206595'}
+             id: 'CNDA_S47841'
+            sid: 'CNDA_S47634'
+
+    experiments: {'CNDA_E225225'}
+             id: 'CNDA_S52847'
+            sid: 'CNDA_S33789'
+
+    experiments: {2×1 cell}
+             id: 'CNDA_S58258'
+             ct: 1
+            sid: 'CNDA_S58258'
+
+    experiments: {3×1 cell}
+             id: 'CNDA_S35897'
+             ct: 1
+            sid: 'CNDA_S35897'
+
+    experiments: {2×1 cell}
+             id: 'CNDA_S52590'
+             ct: 1
+            sid: 'CNDA_S52590'
+
+    experiments: {3×1 cell}
+             id: 'CNDA_S57920'
+             ct: 1
+            sid: 'CNDA_S57920'
+
+    experiments: {3×1 cell}
+             id: 'CNDA_S37005'
+             ct: 1
+            sid: 'CNDA_S37005'
+
+    experiments: {3×1 cell}
+             id: 'CNDA_S37244'
+             ct: 1
+            sid: 'CNDA_S37244'
+
+    experiments: []
+             id: 'CNDA_S35934'
+
+    experiments: {3×1 cell}
+             id: 'CNDA_S41723'
+             ct: 1
+            sid: 'CNDA_S41723'
+
+    experiments: {'CNDA_E185869'}
+             id: 'CNDA_S40725'
+    twilite_cal: 1
+
+    experiments: {'CNDA_E205859'}
+             id: 'CNDA_S47712'
+    twilite_cal: 1
+
+    experiments: {3×1 cell}
+             id: 'CNDA_S38675'
+             ct: 1
+            sid: 'CNDA_S38675'
+
+    experiments: {3×1 cell}
+             id: 'CNDA_S39781'
+             ct: 1
+            sid: 'CNDA_S39781'
+
+    experiments: {2×1 cell}
+             id: 'CNDA_S40037'
+             ct: 1
+            sid: 'CNDA_S40037'
+
+    experiments: {'CNDA_E194460'}
+             id: 'CNDA_S42340'
+    twilite_cal: 1
+
+    experiments: {3×1 cell}
+             id: 'CNDA_S39157'
+             ct: 1
+            sid: 'CNDA_S39157'
+
+    experiments: {5×1 cell}
+             id: 'CNDA_S38938'
+             ct: 1
+            sid: 'CNDA_S38938'
+
+    experiments: {'CNDA_E249151'}
+             id: 'CNDA_S58273'
+    twilite_cal: 1
+
+    experiments: {'CNDA_E206575'}
+             id: 'CNDA_S47837'
+    twilite_cal: 1
+
+    experiments: {'CNDA_E203952'}
+             id: 'CNDA_S47293'
+    twilite_cal: 1
+
+    experiments: {'CNDA_E197068'}
+             id: 'CNDA_S43065'
+    twilite_cal: 1
